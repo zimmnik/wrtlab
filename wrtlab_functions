@@ -8,10 +8,13 @@ set -o errexit
 
 function build_image () {
   #-------------------------------------------------
-  FLD=files/etc/dropbear
-  mkdir -p ${FLD}
-  cp -v  ~/.ssh/authorized_keys ${FLD}/
-  chmod og-rwx ${FLD}/authorized_keys
+  if [ ! -d tmp ]; then mkdir -v tmp; fi
+  if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
+  mkdir -v "tmp/${NAME}"
+  cp -rvT cfg/default/ "tmp/${NAME}/"
+  cp -rvT "cfg/${NAME}/" "tmp/${NAME}/"
+  cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
+  chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
 
   #-------------------------------------------------
   if ! docker inspect --type=image fedora:35-wrtlab > /dev/null; then docker build -t fedora:35-wrtlab .; fi
@@ -19,13 +22,13 @@ function build_image () {
   rm -rfv img/*
 
   PACKAGES="cgi-io libiwinfo libiwinfo-data libiwinfo-lua liblua liblucihttp liblucihttp-lua libubus-lua lua luci luci-app-firewall luci-app-opkg luci-base luci-lib-base luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system luci-proto-ppp luci-ssl px5g-wolfssl rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns uhttpd uhttpd-mod-ubus luci-app-wireguard arp-scan arp-scan-database grub2 grub2-efi kmod-fs-vfat kmod-nls-base kmod-nls-cp437 kmod-nls-iso8859-1 kmod-nls-utf8 iperf3 openssh-client-utils"
+  FILES="tmp/${NAME}"
 
-  docker run -it --rm -v "${PWD}:/opt:Z" --env "IMG_NAME=${NAME}" --env "PACKAGES=${PACKAGES}" fedora:35-wrtlab bash -x -c '\
-    set -o nounset; \
-    set -o errexit; \
-    make -j4 image FILES="/opt/files" BIN_DIR="/opt/img" PACKAGES="$PACKAGES"; \
-    cd /opt/img/; gzip -d openwrt-21.02.1-x86-64-generic-ext4-combined.img.gz || true; \
-    qemu-img convert -f raw -O qcow2 openwrt-21.02.1-x86-64-generic-ext4-combined.img "$IMG_NAME".qcow2'
+  docker run -it --rm -v "${PWD}:/opt:Z" --env "IMG_NAME=${NAME}" --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" fedora:35-wrtlab bash -x -c '\
+    set -o nounset; set -o errexit; \
+    make -j4 image FILES="/opt/${IMG_FILES}/files" BIN_DIR="/opt/${IMG_FILES}/img" PACKAGES="$PACKAGES"; \
+    cd "/opt/${IMG_FILES}/img"; gzip -d openwrt-21.02.1-x86-64-generic-ext4-combined.img.gz || true; \
+    qemu-img convert -f raw -O qcow2 openwrt-21.02.1-x86-64-generic-ext4-combined.img "${IMG_NAME}.qcow2"'
     #guestmount -a tmp/rr1router.qcow2 -i --rw mnt/
 }
 
@@ -35,29 +38,29 @@ function virtnet_setup () {
     virsh net-start default
   fi
 
-  if ! virsh net-dumpxml default | grep -q "<host mac='52:54:00:55:90:01' ip='192.168.122.251'/>"; then
-    if virsh net-dumpxml default | grep -q "host mac='52:54:00:55:90:01'"; then
-      virsh net-update default modify ip-dhcp-host '<host mac="52:54:00:55:90:01" ip="192.168.122.251"/>' --live --config --parent-index 0
+  if ! virsh net-dumpxml default | grep -q "<host mac='$ROUTER_INET_MAC' ip='$ROUTER_INET_IP'/>"; then
+    if virsh net-dumpxml default | grep -q "host mac='$ROUTER_INET_MAC'"; then
+      virsh net-update default modify ip-dhcp-host "<host mac='$ROUTER_INET_MAC' ip='$ROUTER_INET_IP'/>" --live --config --parent-index 0
     else
-      virsh net-update default add-last ip-dhcp-host '<host mac="52:54:00:55:90:01" ip="192.168.122.251"/>' --live --config --parent-index 0
+      virsh net-update default add-last ip-dhcp-host "<host mac='$ROUTER_INET_MAC' ip='$ROUTER_INET_IP'/>" --live --config --parent-index 0
     fi
   fi
 
   #-------------------------------------------------
-  if ! virsh net-info mostestnet &> /dev/null; then
-    virsh net-define <(cat << "EOF"
+  if ! virsh net-info "${ROUTER_HOME_NET_NAME}" &> /dev/null; then
+    virsh net-define <(cat << EOF
 <network>
-  <name>mostestnet</name>
+  <name>${ROUTER_HOME_NET_NAME}</name>
   <bridge stp='off'/>
-  <ip address='192.168.123.253' netmask='255.255.255.0'>
+  <ip address='${HYPERVISOR_HOME_NET_IP}' netmask='255.255.255.0'>
   </ip>
 </network>
 EOF
 )
   fi
 
-  if ! virsh net-info mostestnet | grep -q "Active:         yes"; then
-    virsh net-start mostestnet
+  if ! virsh net-info "${ROUTER_HOME_NET_NAME}" | grep -q "Active:         yes"; then
+    virsh net-start "${ROUTER_HOME_NET_NAME}" 
   fi
 }
 
@@ -82,7 +85,7 @@ function deploy () {
     chown "${USER}:qemu" "$LIBVIRT_DIR_POOL_PATH"
     chmod g+rws "$LIBVIRT_DIR_POOL_PATH"
   fi
-  cp -v "img/${NAME}.qcow2" "$LIBVIRT_DIR_POOL_PATH"
+  cp -v "tmp/${NAME}/img/moswrt.qcow2" "$LIBVIRT_DIR_POOL_PATH"
   
   #osinfo-query os
   virt-install -n "${NAME}" --install no_install=yes \

@@ -1,5 +1,5 @@
 # openwrt images
-img/
+tmp/
 
 # Swap
 [._]*.s[a-v][a-z]

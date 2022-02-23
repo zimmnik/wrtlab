@@ -1,0 +1,66 @@
+P=P@ssw0rd echo -e "$P\n$P" | passwd
+#echo $(dd if=/dev/urandom bs=100 count=1 | tr -dc A-Za-z0-9) | passwd
+uci -q batch << EOI
+#System - System - General Settings
+	#Hostname
+	set system.@system[0].hostname='moswrt'
+#Network - Interfaces - Interfaces
+	#LAN - Edit - General Settings - IPv4 address
+	set network.lan.ipaddr='192.168.123.254'
+#Network - DHCP and DNS - General Settings
+	#Local server
+	set dhcp.@dnsmasq[0].local='/mos.local/'
+	#Local domain
+	set dhcp.@dnsmasq[0].domain='mos.local'
+	#Domain whitelist
+	add_list dhcp.@dnsmasq[0].rebind_domain='plex.direct'
+#Network - DHCP and DNS - Static Leases
+	add dhcp host
+	set dhcp.@host[-1].name='alpine'
+	set dhcp.@host[-1].dns='1'
+	set dhcp.@host[-1].mac='52:54:00:D9:8E:04'
+	set dhcp.@host[-1].ip='192.168.123.252'
+#Network - Firewall - Traffic rules
+        #Rule 'Allow-Wireguard'
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-Wireguard'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].src='wan'
+	set firewall.@rule[-1].dest_port='5151'
+	set firewall.@rule[-1].target='ACCEPT'
+	add_list firewall.@rule[-1].proto='udp'
+        #Rule 'Allow-Iperf3'
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-Iperf3'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].dest_port='5201'
+	set firewall.@rule[-1].target='ACCEPT'
+#Network - Firewall - General Settings
+	add firewall zone
+	set firewall.@zone[-1].name='vpn'
+	set firewall.@zone[-1].input='REJECT'
+	set firewall.@zone[-1].output='ACCEPT'
+	set firewall.@zone[-1].forward='REJECT'
+	set firewall.@zone[-1].masq='1'
+	add_list firewall.@zone[-1].network='WG'
+	add firewall forwarding
+	set firewall.@forwarding[-1].src='lan'
+	set firewall.@forwarding[-1].dest='vpn'
+#Network - Interfaces - WG
+	set network.WG=interface
+	set network.WG.proto='wireguard'
+	add network wireguard_WG
+	#set network.WG.private_key='$(cat /etc/wireguard/moswrt.key)'
+        set network.WG.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
+	set network.WG.listen_port='5151'
+	add_list network.WG.addresses='192.168.88.254/32'
+#Network - Interfaces - WG - Peers
+        set network.@wireguard_WG[-1].route_allowed_ips='1'
+        set network.@wireguard_WG[-1].description='nahwrt'
+        #set network.@wireguard_WG[0].public_key='$(cat /etc/wireguard/nahwrt.key | wg pubkey)'
+        set network.@wireguard_WG[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
+        add_list network.@wireguard_WG[-1].allowed_ips='192.168.88.253/32'
+        add_list network.@wireguard_WG[-1].allowed_ips='192.168.124.0/24'
+EOI
+uci commit

@@ -38,7 +38,7 @@ expect {
 
 #send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 172.28.1.1\r"
 send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 8.8.8.8\r"
-set timeout 5
+set timeout 10
 expect {
   " 0% packet loss" {}
   default { send_user "FAIL: ping error\n"; exit 1 }
