@@ -1,0 +1,45 @@
+P=P@ssw0rd echo -e "$P\n$P" | passwd
+uci -q batch << EOI
+#System - System - General Settings
+	#Hostname
+	set system.@system[0].hostname='nahwrt'
+#Network - Interfaces - Interfaces
+	#LAN - Edit - General Settings - IPv4 address
+	set network.lan.ipaddr='192.168.124.254'
+#Network - DHCP and DNS - General Settings
+	#Local server
+	set dhcp.@dnsmasq[0].local='/nah.local/'
+	#Local domain
+	set dhcp.@dnsmasq[0].domain='nah.local'
+#Network - DHCP and DNS - Static Leases
+	add dhcp host
+	set dhcp.@host[-1].name='fedora'
+	set dhcp.@host[-1].dns='1'
+	set dhcp.@host[-1].mac='52:54:00:D9:8E:03'
+	set dhcp.@host[-1].ip='192.168.124.1'
+#Network - Firewall - General Settings
+        add firewall zone
+        set firewall.@zone[-1].name='vpn'
+        set firewall.@zone[-1].input='REJECT'
+        set firewall.@zone[-1].output='ACCEPT'
+        set firewall.@zone[-1].forward='REJECT'
+        add_list firewall.@zone[-1].network='WG'
+        add firewall forwarding
+        set firewall.@forwarding[-1].src='vpn'
+        set firewall.@forwarding[-1].dest='lan'
+#Network - Interfaces - WG
+	add network wireguard_WG
+	set network.WG=interface
+	set network.WG.proto='wireguard'
+	set network.WG.private_key='zUHaNRpdy/cJU8juzmHlIbcL7pZOuLn33MVmDJy1UBg='
+	add_list network.WG.addresses='192.168.88.253/32'
+#Network - Interfaces - WG - Peers
+	set network.@wireguard_WG[-1].description='rr1router'
+	set network.@wireguard_WG[-1].public_key='hkz1yY3FvAclZtP45C1wyQUS2gUqWVZIIduebVcrCH4='
+	set network.@wireguard_WG[-1].endpoint_host='192.168.122.251'
+	set network.@wireguard_WG[-1].endpoint_port='5151'
+	set network.@wireguard_WG[-1].persistent_keepalive='25'
+	set network.@wireguard_WG[-1].route_allowed_ips='1'
+	add_list network.@wireguard_WG[-1].allowed_ips='192.168.88.254/32'
+EOI
+uci commit

@@ -1,0 +1,51 @@
+#!/usr/bin/expect -f
+#VERSION=220206
+#AUTHOR="Semyon Vasilkov <github@zimmnik.ru>"
+#FYI https://pantz.org/software/expect/expect_examples_and_tips.html
+
+set name [lindex $argv 0]
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname virsh_domain_name\n"
+  exit 1
+}
+
+log_user 1
+
+set send_slow {1 .1}
+proc send {ignore arg} {
+        sleep .2
+        exp_send -s -- $arg
+}
+
+send_user "\nTest started ... \n"
+
+#spawn virsh reset $name
+spawn virsh console $name
+
+send -- "\r"
+set prompt "(%|#|\\$) $"
+set timeout 15
+expect {
+  "Please press Enter to activate this console" {
+    sleep 3
+    send -- "\r"
+    expect {
+      -re $prompt {}
+      default { send_user "FAIL: console error\n"; exit 1 }
+    }
+  }
+  -re $prompt { send -- "\r" }
+  default { send_user "FAIL: console error\n"; exit 1 }
+}
+
+flush stdout
+#send -- "time ping -c 1 172.28.1.1\r"
+send -- "ping -c 1 8.8.8.8\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: ping error\n"; exit 1 }
+}
+
+send_user "\nTest passed successfully\n\n"
+close

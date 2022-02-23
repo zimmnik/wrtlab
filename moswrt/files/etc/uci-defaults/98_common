@@ -1,0 +1,71 @@
+while uci -q delete firewall.@rule[0]; do :; done
+uci -q batch << EOI
+#System - System - General Settings
+	#Timezone
+	set system.@system[0].zonename='Europe/Moscow'
+	set system.@system[0].timezone='MSK-3'
+#System - System - Time Synchronization
+	#Provide NTP server
+	set system.ntp.enable_server='1'
+#System - Administration - SSH Access
+	#Password authentication
+	set dropbear.@dropbear[0].PasswordAuth='off'
+	#Allow root logins with password
+	set dropbear.@dropbear[0].RootPasswordAuth='off'
+#Network - Interfaces - Interfaces
+	# Remove WAN6
+	delete network.wan6
+	#LAN - Edit - Advanced Settings - Use default gateway
+	set network.lan.defaultroute='0'
+	#LAN - Edit - DHCP Server
+		#DHCPv6-Service
+        	del dhcp.lan.ra_slaac
+        	del dhcp.lan.dhcpv6
+		#RA-Service
+		del dhcp.lan.ra
+		del dhcp.lan.ra_flags
+		add_list dhcp.lan.ra_flags='none'
+#Network - Interfaces - Devices
+	#br-lan - Configure - Enable IPv6
+	set network.@device[0].ipv6='0'
+	#eth0 - Configure - Enable IPv6
+        add network device
+        set network.@device[-1].name='eth0'
+	set network.@device[-1].ipv6='0'
+	#eth1 - Configure - Enable IPv6
+        add network device
+        set network.@device[-1].name='eth1'
+	set network.@device[-1].ipv6='0'
+#Network - Firewall - General Settings
+	#Drop invalid packets
+	set firewall.@defaults[0].drop_invalid='1'
+	# ZONE LAN
+	set firewall.@zone[0].family='ipv4'
+	# ZONE WAN
+	set firewall.@zone[1].family='ipv4'
+#Network - Firewall - Traffic rules
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-DHCP-Renew'
+	set firewall.@rule[-1].target='ACCEPT'
+	set firewall.@rule[-1].src='wan'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].dest_port='68'
+	add_list firewall.@rule[-1].proto='udp'
+	
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-Ping'
+	set firewall.@rule[-1].target='ACCEPT'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].icmp_type='echo-request'
+	add_list firewall.@rule[-1].proto='icmp'
+	
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-SSH'
+	set firewall.@rule[-1].target='ACCEPT'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].dest_port='22'
+	add_list firewall.@rule[-1].proto='tcp'
+EOI
+uci commit
