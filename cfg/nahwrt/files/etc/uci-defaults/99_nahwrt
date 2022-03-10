@@ -36,7 +36,7 @@ uci -q batch << EOI
 #Network - Interfaces - WG - Peers
 	set network.@wireguard_WG[-1].description='rr1router'
 	set network.@wireguard_WG[-1].public_key='hkz1yY3FvAclZtP45C1wyQUS2gUqWVZIIduebVcrCH4='
-	set network.@wireguard_WG[-1].endpoint_host='192.168.122.251'
+	set network.@wireguard_WG[-1].endpoint_host='__WG_SERVER_IP__'
 	set network.@wireguard_WG[-1].endpoint_port='5151'
 	set network.@wireguard_WG[-1].persistent_keepalive='25'
 	set network.@wireguard_WG[-1].route_allowed_ips='1'

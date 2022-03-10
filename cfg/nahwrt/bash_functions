@@ -1,0 +1,39 @@
+#!/bin/bash
+# VERSION=220223
+# shellcheck disable=SC1004
+set -o xtrace
+set -o pipefail
+set -o nounset
+set -o errexit
+
+function specific_build_image () {
+  sed -i "s/__WG_SERVER_IP__/${WG_SERVER_IP}/" "tmp/$NAME/files/etc/uci-defaults/99_${NAME}"
+}
+
+function specific_test () {
+  if virsh dominfo "${NAME}_testclient" &> /dev/null; then
+    if virsh dominfo "${NAME}_testclient" | grep -q "State:          running"; then
+      virsh destroy "${NAME}_testclient"
+    fi
+    virsh undefine "${NAME}_testclient"
+  fi
+
+  if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-34-1.2.iso" ]; then
+    WRTLAB_PATH="$PWD"
+    mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"
+    curl -LO https://mirror.yandex.ru/fedora/linux/releases/34/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-34-1.2.iso
+    curl -LO https://mirror.yandex.ru/fedora/linux/releases/34/Workstation/x86_64/iso/Fedora-Workstation-34-1.2-x86_64-CHECKSUM
+    sha256sum --ignore-missing -c Fedora-Workstation-34-1.2-x86_64-CHECKSUM
+    rm -v Fedora-Workstation-34-1.2-x86_64-CHECKSUM
+    cd "$WRTLAB_PATH"
+  fi
+
+  virt-install -n "${NAME}_testclient" --install no_install=no \
+   --vcpus 1 --ram 1024 --video none --graphics none \
+   --osinfo linux2020 --disk none --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-34-1.2.iso" \
+   --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-34-1-2 rd.live.image systemd.unit=multi-user.target" \
+   --network "${NET_HOME},mac=52:54:00:d9:8e:03" \
+   --noautoconsole
+  
+  "cfg/${NAME}/tests/router_external_test.exp" "${NAME}_testclient"
+}

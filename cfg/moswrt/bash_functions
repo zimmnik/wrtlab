@@ -1,0 +1,38 @@
+#!/bin/bash
+# VERSION=220223
+# shellcheck disable=SC1004
+set -o xtrace
+set -o pipefail
+set -o nounset
+set -o errexit
+
+function specific_build_image () {
+  :
+}
+
+function specific_test () {
+  if virsh dominfo "${NAME}_testclient" &> /dev/null; then
+    if virsh dominfo "${NAME}_testclient" | grep -q "State:          running"; then
+      virsh destroy "${NAME}_testclient"
+    fi
+    virsh undefine "${NAME}_testclient"
+  fi
+
+  if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" ]; then 
+    WRTLAB_PATH="$PWD"
+    mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"
+    curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.0-x86_64.iso
+    curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.0-x86_64.iso.sha256
+    sha256sum --ignore-missing -c alpine-virt-3.15.0-x86_64.iso.sha256
+    rm -v alpine-virt-3.15.0-x86_64.iso.sha256
+    cd "$WRTLAB_PATH"
+  fi
+
+  virt-install -n "${NAME}_testclient" --install no_install=yes \
+   --vcpus 1 --ram 256 --video none --graphics none \
+   --osinfo alpinelinux3.14 --disk device=cdrom,path="${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" \
+   --network "${NET_HOME},mac=52:54:00:d9:8e:04" \
+   --noautoconsole
+  
+  "cfg/${NAME}/tests/router_external_test.exp" "${NAME}_testclient"
+}
