@@ -2,7 +2,7 @@ P=P@ssw0rd echo -e "$P\n$P" | passwd
 uci -q batch << EOI
 #System - System - General Settings
 	#Hostname
-	set system.@system[0].hostname='nahwrt'
+        set system.@system[0].hostname='__NAME__'
 #Network - Interfaces - Interfaces
 	#LAN - Edit - General Settings - IPv4 address
 	set network.lan.ipaddr='192.168.124.254'

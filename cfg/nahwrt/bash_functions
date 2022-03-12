@@ -7,7 +7,7 @@ set -o nounset
 set -o errexit
 
 function specific_build_image () {
-  sed -i "s/__WG_SERVER_IP__/${WG_SERVER_IP}/" "tmp/$NAME/files/etc/uci-defaults/99_${NAME}"
+  sed -i "s/__WG_SERVER_IP__/${WG_SERVER_IP}/" "tmp/$NAME/files/etc/uci-defaults/99_custom"
 }
 
 function specific_test () {

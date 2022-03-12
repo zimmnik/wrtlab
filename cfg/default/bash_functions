@@ -18,6 +18,7 @@ function build_image () {
   cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
   chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
 
+  sed -i "s/__NAME__/${NAME}/" "tmp/${NAME}/files/etc/uci-defaults/99_custom"
   specific_build_image
 
   #-------------------------------------------------
