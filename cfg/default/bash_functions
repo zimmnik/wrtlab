@@ -15,6 +15,8 @@ function build_image () {
   mkdir -v "tmp/${NAME}"
   cp -rvT cfg/default/ "tmp/${NAME}/"
   cp -rvT "cfg/${NAME}/" "tmp/${NAME}/"
+
+  mkdir -p "tmp/${NAME}/files/etc/dropbear/"
   cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
   chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
 

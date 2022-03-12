@@ -1,0 +1,18 @@
+#!/bin/bash
+# VERSION=220223
+# shellcheck disable=SC1004
+set -o xtrace
+set -o pipefail
+set -o nounset
+set -o errexit
+
+function specific_build_image () {
+  sed -i "s/__WRTLAB_WAN_IP__/${WRTLAB_WAN_IP}/" "tmp/$NAME/files/etc/uci-defaults/99_custom"
+  sed -i "s/__WRTLAB_WAN_MASK__/${WRTLAB_WAN_MASK}/" "tmp/$NAME/files/etc/uci-defaults/99_custom"
+  sed -i "s/__WRTLAB_WAN_GW__/${WRTLAB_WAN_GW}/" "tmp/$NAME/files/etc/uci-defaults/99_custom"
+  sed -i "s/__WRTLAB_WAN_DNS__/${WRTLAB_WAN_DNS}/" "tmp/$NAME/files/etc/uci-defaults/99_custom"
+}
+
+function specific_test () {
+  :
+}
