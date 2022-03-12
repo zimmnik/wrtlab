@@ -13,20 +13,20 @@ uci -q batch << EOI
 	set network.wan.netmask='__WRTLAB_WAN_MASK__'
 	set network.wan.gateway='__WRTLAB_WAN_GW__'
 	set network.wan.dns='__WRTLAB_WAN_DNS__'
-#Network - Interfaces - WG
-	set network.WG=interface
-	set network.WG.proto='wireguard'
-	add network wireguard_WG
-	#set network.WG.private_key='$(cat /etc/wireguard/moswrt.key)'
-        set network.WG.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
-	set network.WG.listen_port='5151'
-	add_list network.WG.addresses='192.168.88.254/24'
-#Network - Interfaces - WG - Peers
-        set network.@wireguard_WG[-1].route_allowed_ips='1'
-        set network.@wireguard_WG[-1].description='homewrt'
-        set network.@wireguard_WG[0].public_key='$(cat /etc/wireguard/nahwrt.key | wg pubkey)'
-        set network.@wireguard_WG[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
-        add_list network.@wireguard_WG[-1].allowed_ips='192.168.88.0/24'
+#Network - Interfaces - VPN
+	set network.VPN=interface
+	set network.VPN.proto='wireguard'
+	add network wireguard_VPN
+	#set network.VPN.private_key='$(cat /etc/wireguard/moswrt.key)'
+        set network.VPN.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
+	set network.VPN.listen_port='5151'
+	add_list network.VPN.addresses='__WRTLAB_VPN_IP__'
+#Network - Interfaces - VPN - Peers
+        set network.@wireguard_VPN[-1].route_allowed_ips='1'
+        set network.@wireguard_VPN[-1].description='homewrt'
+        set network.@wireguard_VPN[0].public_key='$(cat /etc/wireguard/nahwrt.key | wg pubkey)'
+        set network.@wireguard_VPN[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
+        add_list network.@wireguard_VPN[-1].allowed_ips='192.168.88.0/24'
 #Network - Firewall - Traffic rules
         #Rule 'Allow-Wireguard'
 	add firewall rule
@@ -44,13 +44,13 @@ uci -q batch << EOI
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
         #Rule 'Allow-uhttpd'
-	add firewall rule
-	set firewall.@rule[-1].name='Allow-Uhttpd'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].src='*'
-	set firewall.@rule[-1].dest_port='443'
-	set firewall.@rule[-1].target='ACCEPT'
-	add_list firewall.@rule[-1].proto='tcp'
+	#add firewall rule
+	#set firewall.@rule[-1].name='Allow-Uhttpd'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].src='*'
+	#set firewall.@rule[-1].dest_port='443'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#add_list firewall.@rule[-1].proto='tcp'
 #Network - Firewall - Zones - LAN
 	delete firewall.@zone[0]
 #Network - Firewall - Zones - VPN
@@ -59,7 +59,7 @@ uci -q batch << EOI
 	set firewall.@zone[-1].input='ACCEPT'
 	set firewall.@zone[-1].output='ACCEPT'
 	set firewall.@zone[-1].forward='ACCEPT'
-	add_list firewall.@zone[-1].network='WG'
+	add_list firewall.@zone[-1].network='VPN'
 	add firewall forwarding
 	set firewall.@forwarding[-1].src='vpn'
 	set firewall.@forwarding[-1].dest='wan'
@@ -68,9 +68,9 @@ uci -q batch << EOI
         delete network.@device[0]
         #eth1
         delete network.@device[-1]
-        #WG - Configure - Enable IPv6
+        #VPN - Configure - Enable IPv6
 	add network device
-	set network.@device[-1].name='WG'
+	set network.@device[-1].name='VPN'
 	set network.@device[-1].ipv6='0'
 EOI
 uci commit

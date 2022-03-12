@@ -18,6 +18,8 @@ export WRTLAB_WAN_MASK="255.255.255.0"
 export WRTLAB_WAN_GW="10.64.0.254"
 export WRTLAB_WAN_DNS="10.64.0.254"
 
+export WRTLAB_VPN_IP="192.168.88.254/24"
+
 source cfg/default/bash_functions
 
 main () {
