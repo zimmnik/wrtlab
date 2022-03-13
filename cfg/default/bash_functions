@@ -92,7 +92,7 @@ function deploy () {
    --vcpus 1 --ram 128 --video none --graphics none  \
    --osinfo linux2020 --disk path="${LIBVIRT_DIR_POOL_PATH}/${NAME}.qcow2" \
    --network "${NET_HOME}" \
-   --network "${NET_INET}" \
+   --network "${NET_INET},mac=${WRTLAB_WAN_MAC}" \
    --noautoconsole
 }
 

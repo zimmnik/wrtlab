@@ -1,0 +1,83 @@
+#!/usr/bin/expect -f
+#VERSION=220206
+#AUTHOR="Semyon Vasilkov <github@zimmnik.ru>"
+#FYI https://pantz.org/software/expect/expect_examples_and_tips.html
+
+set name [lindex $argv 0]
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname virsh_domain_name\n"
+  exit 1
+}
+
+log_user 1
+
+send_user "\nExternal test started ... \n"
+
+spawn virsh console $name
+
+set timeout 60
+expect {
+  "localhost-live login\: \$" {}
+  default { send_user "FAIL: console error\n"; exit 1 }
+}
+
+send -- "root\r"
+set timeout 3
+expect {
+  "root@localhost-live" {}
+  default { send_user "FAIL: prompt error\n"; exit 1 }
+}
+
+#set timeout 3
+#expect {
+#  "Escape character is" {}
+#  default { send_user "FAIL: prompt error\n"; exit 1 }
+#}
+
+send -- "yum -y install xterm-resize wireguard-tools\r"
+set timeout 180
+expect {
+  "Complete!" {}
+  default { send_user "FAIL: yum install error\n"; exit 1 }
+}
+
+#send -- "nmcli connection delete VPN\r"
+#sleep 2
+
+set timeout 10
+send -- "nmcli connection add type wireguard con-name VPN ifname wg0 \
+ipv6.method disabled ipv4.method manual ipv4.addresses __WRTLAB_TEST_VPN_IP__ \
+ipv4.dns __WRTLAB_TEST_VPN_GW__ ipv4.dns-priority -50 \
+wireguard.private-key \"zUHaNRpdy/cJU8juzmHlIbcL7pZOuLn33MVmDJy1UBg=\" && \
+cat << 'EOF' >> /etc/NetworkManager/system-connections/VPN.nmconnection
+
+\[wireguard-peer.hkz1yY3FvAclZtP45C1wyQUS2gUqWVZIIduebVcrCH4=\]
+endpoint=__WRTLAB_WAN_IP__:__WRTLAB_VPN_PORT__
+persistent-keepalive=25
+allowed-ips=0.0.0.0/0;
+EOF
+nmcli connection load /etc/NetworkManager/system-connections/VPN.nmconnection && \
+nmcli connection up VPN\r"
+set timeout 10
+expect {
+  "successfully added" {}
+  default { send_user "FAIL: nmcli error\n"; exit 1 }
+}
+sleep 2
+
+send -- "resolvectl query 8.8.8.8\r"
+set timeout 16
+expect {
+  "link: wg0" {}
+  default { send_user "FAIL: dns error\n"; exit 1 }
+}
+
+send -- "traceroute 8.8.8.8\r"
+set timeout 16
+expect {
+  "1  __WRTLAB_TEST_VPN_GW__" {}
+  default { send_user "FAIL: traceroute error\n"; exit 1 }
+}
+
+send_user "\nTest passed successfully\n\n"
+close

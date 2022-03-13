@@ -1,4 +1,4 @@
-P=P@ssw0rd echo -e "$P\n$P" | passwd
+#P=P@ssw0rd echo -e "$P\n$P" | passwd
 #echo $(dd if=/dev/urandom bs=100 count=1 | tr -dc A-Za-z0-9) | passwd
 uci -q batch << EOI
 #System - System - General Settings
@@ -13,27 +13,33 @@ uci -q batch << EOI
 	set network.wan.netmask='__WRTLAB_WAN_MASK__'
 	set network.wan.gateway='__WRTLAB_WAN_GW__'
 	set network.wan.dns='__WRTLAB_WAN_DNS__'
+#Network - DHCP and DNS - General Settings
+        #Local server
+        set dhcp.@dnsmasq[0].local='/vps.local/'
+        #Local domain
+        set dhcp.@dnsmasq[0].domain='vps.local'
 #Network - Interfaces - VPN
 	set network.VPN=interface
 	set network.VPN.proto='wireguard'
 	add network wireguard_VPN
 	#set network.VPN.private_key='$(cat /etc/wireguard/moswrt.key)'
         set network.VPN.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
-	set network.VPN.listen_port='5151'
+	set network.VPN.listen_port='__WRTLAB_VPN_PORT__'
 	add_list network.VPN.addresses='__WRTLAB_VPN_IP__'
 #Network - Interfaces - VPN - Peers
         set network.@wireguard_VPN[-1].route_allowed_ips='1'
         set network.@wireguard_VPN[-1].description='homewrt'
-        set network.@wireguard_VPN[0].public_key='$(cat /etc/wireguard/nahwrt.key | wg pubkey)'
         set network.@wireguard_VPN[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
-        add_list network.@wireguard_VPN[-1].allowed_ips='192.168.88.0/24'
+        add_list network.@wireguard_VPN[-1].allowed_ips='__WRTLAB_VPN_NET__'
 #Network - Firewall - Traffic rules
+        #Rule 'Allow-DHCP-renew"
+	delete firewall.@rule[0]
         #Rule 'Allow-Wireguard'
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Wireguard'
 	set firewall.@rule[-1].family='ipv4'
 	set firewall.@rule[-1].src='wan'
-	set firewall.@rule[-1].dest_port='5151'
+	set firewall.@rule[-1].dest_port='__WRTLAB_VPN_PORT__'
 	set firewall.@rule[-1].target='ACCEPT'
 	add_list firewall.@rule[-1].proto='udp'
         #Rule 'Allow-Iperf3'
