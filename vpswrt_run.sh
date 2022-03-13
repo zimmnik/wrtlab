@@ -31,8 +31,8 @@ source cfg/default/bash_functions
 
 main () {
   build_image
-  deploy
-  test
+  #deploy
+  #test
 }
 
 main "$@"

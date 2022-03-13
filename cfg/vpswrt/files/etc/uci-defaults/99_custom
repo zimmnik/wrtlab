@@ -27,10 +27,10 @@ uci -q batch << EOI
 	set network.VPN.listen_port='__WRTLAB_VPN_PORT__'
 	add_list network.VPN.addresses='__WRTLAB_VPN_IP__'
 #Network - Interfaces - VPN - Peers
-        set network.@wireguard_VPN[-1].route_allowed_ips='1'
-        set network.@wireguard_VPN[-1].description='homewrt'
-        set network.@wireguard_VPN[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
-        add_list network.@wireguard_VPN[-1].allowed_ips='__WRTLAB_VPN_NET__'
+        #set network.@wireguard_VPN[-1].route_allowed_ips='1'
+        #set network.@wireguard_VPN[-1].description='homewrt'
+        #set network.@wireguard_VPN[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
+        #add_list network.@wireguard_VPN[-1].allowed_ips='__WRTLAB_VPN_NET__'
 #Network - Firewall - Traffic rules
         #Rule 'Allow-DHCP-renew"
 	delete firewall.@rule[0]
