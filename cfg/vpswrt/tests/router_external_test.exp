@@ -52,7 +52,7 @@ wireguard.private-key \"zUHaNRpdy/cJU8juzmHlIbcL7pZOuLn33MVmDJy1UBg=\" && \
 cat << 'EOF' >> /etc/NetworkManager/system-connections/VPN.nmconnection
 
 \[wireguard-peer.hkz1yY3FvAclZtP45C1wyQUS2gUqWVZIIduebVcrCH4=\]
-endpoint=__WRTLAB_WAN_IP__:__WRTLAB_VPN_PORT__
+endpoint=__WRTLAB_WAN_IP__:__WRTLAB_VPN_PORT_HIDDEN__
 persistent-keepalive=25
 allowed-ips=0.0.0.0/0;
 EOF

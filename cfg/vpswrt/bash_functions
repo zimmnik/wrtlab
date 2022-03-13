@@ -18,6 +18,7 @@ function specific_build_image () {
 
   grep -R -l __WRTLAB_WAN_IP__ "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IP__%${WRTLAB_WAN_IP}%g"
   grep -R -l __WRTLAB_VPN_PORT__ "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT__/${WRTLAB_VPN_PORT}/g"
+  grep -R -l __WRTLAB_VPN_PORT_HIDDEN__ "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT_HIDDEN__/${WRTLAB_VPN_PORT_HIDDEN}/g"
 }
 
 function specific_test () {

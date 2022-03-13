@@ -35,13 +35,13 @@ uci -q batch << EOI
         #Rule 'Allow-DHCP-renew"
 	delete firewall.@rule[0]
         #Rule 'Allow-Wireguard'
-	add firewall rule
-	set firewall.@rule[-1].name='Allow-Wireguard'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].src='wan'
-	set firewall.@rule[-1].dest_port='__WRTLAB_VPN_PORT__'
-	set firewall.@rule[-1].target='ACCEPT'
-	add_list firewall.@rule[-1].proto='udp'
+	#add firewall rule
+	#set firewall.@rule[-1].name='Allow-Wireguard'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].src='wan'
+	#set firewall.@rule[-1].dest_port='__WRTLAB_VPN_PORT__'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#add_list firewall.@rule[-1].proto='udp'
         #Rule 'Allow-Iperf3'
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Iperf3'
@@ -78,5 +78,16 @@ uci -q batch << EOI
 	add network device
 	set network.@device[-1].name='VPN'
 	set network.@device[-1].ipv6='0'
+#Network - Firewall - Port forwards
+	#wireguard
+	add firewall redirect
+	set firewall.@redirect[-1].dest='wan'
+	set firewall.@redirect[-1].target='DNAT'
+	set firewall.@redirect[-1].name='wireguard'
+	add_list firewall.@redirect[-1].proto='udp'
+	set firewall.@redirect[-1].src='wan'
+	set firewall.@redirect[-1].src_dport='__WRTLAB_VPN_PORT_HIDDEN__'
+	set firewall.@redirect[-1].dest_ip='__WRTLAB_WAN_IP__'
+	set firewall.@redirect[-1].dest_port='__WRTLAB_VPN_PORT__'
 EOI
 uci commit
