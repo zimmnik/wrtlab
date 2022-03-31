@@ -1,5 +1,4 @@
 #P=P@ssw0rd echo -e "$P\n$P" | passwd
-#echo $(dd if=/dev/urandom bs=100 count=1 | tr -dc A-Za-z0-9) | passwd
 uci -q batch << EOI
 #System - System - General Settings
 	#Hostname
@@ -22,15 +21,14 @@ uci -q batch << EOI
 	set network.VPN=interface
 	set network.VPN.proto='wireguard'
 	add network wireguard_VPN
-	#set network.VPN.private_key='$(cat /etc/wireguard/moswrt.key)'
         set network.VPN.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
 	set network.VPN.listen_port='__WRTLAB_VPN_PORT__'
 	add_list network.VPN.addresses='__WRTLAB_VPN_IP__'
-#Network - Interfaces - VPN - Peers
-        #set network.@wireguard_VPN[-1].route_allowed_ips='1'
-        #set network.@wireguard_VPN[-1].description='homewrt'
-        #set network.@wireguard_VPN[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
-        #add_list network.@wireguard_VPN[-1].allowed_ips='__WRTLAB_VPN_NET__'
+#Network - Interfaces - VPN - Peers DEBUG ONLY
+        set network.@wireguard_VPN[-1].route_allowed_ips='1'
+        set network.@wireguard_VPN[-1].description='testclient'
+        set network.@wireguard_VPN[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
+        add_list network.@wireguard_VPN[-1].allowed_ips='__WRTLAB_VPN_NET__'
 #Network - Firewall - Traffic rules
         #Rule 'Allow-DHCP-renew"
 	delete firewall.@rule[0]
@@ -49,14 +47,14 @@ uci -q batch << EOI
 	set firewall.@rule[-1].src='*'
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
-        #Rule 'Allow-uhttpd'
-	#add firewall rule
-	#set firewall.@rule[-1].name='Allow-Uhttpd'
-	#set firewall.@rule[-1].family='ipv4'
-	#set firewall.@rule[-1].src='*'
-	#set firewall.@rule[-1].dest_port='443'
-	#set firewall.@rule[-1].target='ACCEPT'
-	#add_list firewall.@rule[-1].proto='tcp'
+        #Rule 'Allow-uhttpd' DEBUG ONLY
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-Uhttpd'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].dest_port='443'
+	set firewall.@rule[-1].target='ACCEPT'
+	add_list firewall.@rule[-1].proto='tcp'
 #Network - Firewall - Zones - LAN
 	delete firewall.@zone[0]
 #Network - Firewall - Zones - VPN

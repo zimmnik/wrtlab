@@ -28,11 +28,20 @@ expect {
   default { send_user "FAIL: prompt error\n"; exit 1 }
 }
 
-#set timeout 3
-#expect {
-#  "Escape character is" {}
-#  default { send_user "FAIL: prompt error\n"; exit 1 }
-#}
+set proxy_enabled __WRTLAB_PROXY_ENABLED__
+set proxy_url __WRTLAB_PROXY_URL_LIBVIRT__
+set proxy_fedora_main __WRTLAB_PROXY_FEDORA_MAIN__
+set proxy_fedora_codecs __WRTLAB_PROXY_FEDORA_CODECS__
+
+if {$proxy_enabled == true} {
+send -- "\
+sed -i '/fedora-cisco-openh264-\$releasever/i \#baseurl=$proxy_fedora_codecs/\$releasever/\$basearch/os/' /etc/yum.repos.d/fedora-cisco-openh264.repo && \
+sed -i 's%http://download.example/pub/fedora%$proxy_fedora_main%g' \$(grep -ril 'baseurl' /etc/yum.repos.d/) && \
+sed -i 's/#baseurl/baseurl/g' \$(grep -ril 'baseurl' /etc/yum.repos.d/) && \
+sed -i 's/metalink/#metalink/g' \$(grep -ril 'metalink' /etc/yum.repos.d/) && \
+echo -e 'deltarpm=false\nzchunk=false\nproxy=$proxy_url' | tee -a /etc/dnf/dnf.conf
+\r"
+} 
 
 send -- "yum -y install xterm-resize wireguard-tools\r"
 set timeout 180

@@ -16,10 +16,20 @@ function specific_build_image () {
   sed -i "s%__WRTLAB_TEST_VPN_IP__%${WRTLAB_TEST_VPN_IP}%" "tmp/${NAME}/tests/router_external_test.exp"
   sed -i "s%__WRTLAB_TEST_VPN_GW__%${WRTLAB_TEST_VPN_GW}%" "tmp/${NAME}/tests/router_external_test.exp"
 
+  grep -R -l __WRTLAB_PROXY_ENABLED__ "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_ENABLED__%${WRTLAB_PROXY_ENABLED}%g"
+  grep -R -l __WRTLAB_PROXY_URL_LIBVIRT__ "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_URL_LIBVIRT__%${WRTLAB_PROXY_URL_LIBVIRT}%g"
+  grep -R -l __WRTLAB_PROXY_FEDORA_MAIN__ "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_MAIN__%${WRTLAB_PROXY_FEDORA_MAIN}%g"
+  grep -R -l __WRTLAB_PROXY_FEDORA_CODECS__ "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_CODECS__%${WRTLAB_PROXY_FEDORA_CODECS}%g"
+
   grep -R -l __WRTLAB_WAN_IP__ "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IP__%${WRTLAB_WAN_IP}%g"
   grep -R -l __WRTLAB_VPN_PORT__ "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT__/${WRTLAB_VPN_PORT}/g"
   grep -R -l __WRTLAB_VPN_PORT_HIDDEN__ "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT_HIDDEN__/${WRTLAB_VPN_PORT_HIDDEN}/g"
 }
+
+function specific_virtnet_setup () {
+  :
+}
+
 
 function specific_test () {
   if virsh dominfo "${NAME}_testclient" &> /dev/null; then
@@ -43,7 +53,7 @@ function specific_test () {
    --vcpus 1 --ram 2048 --video none --graphics none \
    --osinfo linux2020 --disk none --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-34-1.2.iso" \
    --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-34-1-2 rd.live.image systemd.unit=multi-user.target" \
-   --network "${NET_INET}" \
+   "${WRTLAB_TEST_NETWORKS[@]}" \
    --noautoconsole
   
   "tmp/${NAME}/tests/router_external_test.exp" "${NAME}_testclient"

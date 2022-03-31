@@ -10,6 +10,25 @@ function specific_build_image () {
   :
 }
 
+function specific_virtnet_setup () {
+  #-------------------------------------------------
+  if ! virsh net-info "${ROUTER_HOME_NET_NAME}" &> /dev/null; then
+    virsh net-define <(cat << EOF
+<network>
+  <name>${ROUTER_HOME_NET_NAME}</name>
+  <bridge stp='off'/>
+  <ip address='${HYPERVISOR_HOME_NET_IP}' netmask='255.255.255.0'>
+  </ip>
+</network>
+EOF
+)
+  fi
+
+  if ! virsh net-info "${ROUTER_HOME_NET_NAME}" | grep -q "Active:         yes"; then
+    virsh net-start "${ROUTER_HOME_NET_NAME}"
+  fi
+}
+
 function specific_test () {
   if virsh dominfo "${NAME}_testclient" &> /dev/null; then
     if virsh dominfo "${NAME}_testclient" | grep -q "State:          running"; then

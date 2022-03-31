@@ -1,12 +1,12 @@
 #!/bin/bash
 # VERSION=220223
-# shellcheck disable=SC1004
+# shellcheck disable=SC1004,1090
 set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
 
-source cfg/${NAME}/bash_functions
+source "cfg/${NAME}/bash_functions"
 
 function build_image () {
   #-------------------------------------------------
@@ -31,8 +31,15 @@ function build_image () {
   PACKAGES="cgi-io libiwinfo libiwinfo-data libiwinfo-lua liblua liblucihttp liblucihttp-lua libubus-lua lua luci luci-app-firewall luci-app-opkg luci-base luci-lib-base luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system luci-proto-ppp luci-ssl px5g-wolfssl rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns uhttpd uhttpd-mod-ubus luci-app-wireguard arp-scan arp-scan-database grub2 grub2-efi kmod-fs-vfat kmod-nls-base kmod-nls-cp437 kmod-nls-iso8859-1 kmod-nls-utf8 iperf3 openssh-client-utils"
   FILES="tmp/${NAME}"
 
-  docker run -it --rm -v "${PWD}:/opt:Z" --env "IMG_NAME=${NAME}" --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" fedora:35-wrtlab bash -x -c '\
-    set -o nounset; set -o errexit; \
+  export WRTLAB_PROXY_ENABLED="true"
+  export WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
+
+  docker run -it --rm -v "${PWD}:/opt:Z" \
+  --env "IMG_NAME=${NAME}" --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" \
+  --env "IMG_PROXY_ENABLED=${WRTLAB_PROXY_ENABLED}" --env "IMG_PROXY_URL=${WRTLAB_PROXY_URL_DOCKER}" \
+  fedora:35-wrtlab bash -c '\
+    set -o nounset; set -o errexit; set -o xtrace;
+    if [ "${IMG_PROXY_ENABLED}" = true ]; then sed -i -e "s/https/http/" repositories.conf && echo "option http_proxy ${IMG_PROXY_URL}" >> repositories.conf && cat repositories.conf; fi && \
     make -j4 image FILES="/opt/${IMG_FILES}/files" BIN_DIR="/opt/${IMG_FILES}/img" PACKAGES="$PACKAGES"; \
     cd "/opt/${IMG_FILES}/img"; gzip -d openwrt-21.02.1-x86-64-generic-ext4-combined.img.gz || true; \
     qemu-img convert -f raw -O qcow2 openwrt-21.02.1-x86-64-generic-ext4-combined.img "${IMG_NAME}.qcow2"'
@@ -45,34 +52,21 @@ function virtnet_setup () {
     virsh net-start default
   fi
 
-  if ! virsh net-dumpxml default | grep -q "<host mac='$ROUTER_INET_MAC' ip='$ROUTER_INET_IP'/>"; then
-    if virsh net-dumpxml default | grep -q "host mac='$ROUTER_INET_MAC'"; then
-      virsh net-update default modify ip-dhcp-host "<host mac='$ROUTER_INET_MAC' ip='$ROUTER_INET_IP'/>" --live --config --parent-index 0
+  if ! virsh net-dumpxml default | grep -q "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>"; then
+    if virsh net-dumpxml default | grep -q "host mac='$WRTLAB_WAN_MAC'"; then
+      virsh net-update default modify ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
     else
-      virsh net-update default add-last ip-dhcp-host "<host mac='$ROUTER_INET_MAC' ip='$ROUTER_INET_IP'/>" --live --config --parent-index 0
+      virsh net-update default add-last ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
     fi
   fi
 
-  #-------------------------------------------------
-  if ! virsh net-info "${ROUTER_HOME_NET_NAME}" &> /dev/null; then
-    virsh net-define <(cat << EOF
-<network>
-  <name>${ROUTER_HOME_NET_NAME}</name>
-  <bridge stp='off'/>
-  <ip address='${HYPERVISOR_HOME_NET_IP}' netmask='255.255.255.0'>
-  </ip>
-</network>
-EOF
-)
-  fi
-
-  if ! virsh net-info "${ROUTER_HOME_NET_NAME}" | grep -q "Active:         yes"; then
-    virsh net-start "${ROUTER_HOME_NET_NAME}" 
-  fi
+  specific_virtnet_setup  
 }
 
 
 function deploy () {
+  virtnet_setup
+
   if virsh dominfo "${NAME}" &> /dev/null; then
     if virsh dominfo "${NAME}" | grep -q "State:          running"; then
       virsh destroy "${NAME}"
@@ -91,8 +85,8 @@ function deploy () {
   virt-install -n "${NAME}" --install no_install=yes \
    --vcpus 1 --ram 128 --video none --graphics none  \
    --osinfo linux2020 --disk path="${LIBVIRT_DIR_POOL_PATH}/${NAME}.qcow2" \
-   --network "${NET_HOME}" \
-   --network "${NET_INET},mac=${WRTLAB_WAN_MAC}" \
+   "${WRTLAB_WAN_NETWORKS[@]}" \
+   "${WRTLAB_HOME_NETWORKS[@]}" \
    --noautoconsole
 }
 
