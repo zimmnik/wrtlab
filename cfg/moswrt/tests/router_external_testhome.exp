@@ -33,15 +33,15 @@ send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 8.8.8.8\r"
 set timeout 10
 expect {
   " 0% packet loss" {}
-  default { send_user "FAIL: google ping error\n"; exit 1 }
+  default { send_user "FAIL: wan ping error\n"; exit 1 }
 }
 
-send -- "ping -c 1 __WRTLAB_TEST_MNGT_IP__\r"
-set timeout 10
-expect {
-  " 0% packet loss" {}
-  default { send_user "FAIL: mngt ping error\n"; exit 1 }
-}
+#send -- "ping -c 1 __WRTLAB_TEST_MNGT_IP__\r"
+#set timeout 10
+#expect {
+#  " 0% packet loss" {}
+#  default { send_user "FAIL: mngt ping error\n"; exit 1 }
+#}
 
 send -- "ping -c 1 __WRTLAB_TEST_DMZ_IP__\r"
 set timeout 10

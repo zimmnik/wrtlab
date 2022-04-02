@@ -1,6 +1,6 @@
 FROM	 	fedora:35
 MAINTAINER	Semyon Vasilkov <github@zimmnik.ru>
-LABEL		Description="Openwrt build image" Version="0.0.2"
+LABEL		Description="Openwrt build image" Version="0.0.3"
 
 USER		root
 RUN		yum -y install vim mc less tree xz wireguard-tools && \
@@ -11,11 +11,11 @@ RUN		yum -y install vim mc less tree xz wireguard-tools && \
 		perl-Thread-Queue qemu-img && \
     		yum clean all && rm -rf /var/cache/yum && \
 		cd /usr/src && \
-		curl -LO https://downloads.openwrt.org/releases/21.02.1/targets/x86/64/openwrt-imagebuilder-21.02.1-x86-64.Linux-x86_64.tar.xz && \
-		curl -LO https://downloads.openwrt.org/releases/21.02.1/targets/x86/64/sha256sums && \
+		curl -LO https://downloads.openwrt.org/releases/21.02.2/targets/x86/64/openwrt-imagebuilder-21.02.2-x86-64.Linux-x86_64.tar.xz && \
+		curl -LO https://downloads.openwrt.org/releases/21.02.2/targets/x86/64/sha256sums && \
 		sha256sum --ignore-missing -c sha256sums && \
-		tar -vxJf openwrt-imagebuilder-21.02.1-x86-64.Linux-x86_64.tar.xz && \
-		ln -s openwrt-imagebuilder-21.02.1-x86-64.Linux-x86_64 builder
+		tar -vxJf openwrt-imagebuilder-21.02.2-x86-64.Linux-x86_64.tar.xz && \
+		ln -s openwrt-imagebuilder-21.02.2-x86-64.Linux-x86_64 builder
 
 WORKDIR		/usr/src/builder
 

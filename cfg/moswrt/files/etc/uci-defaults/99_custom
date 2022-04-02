@@ -5,7 +5,7 @@ uci -q batch << EOI
 	set system.@system[0].hostname='__NAME__'
 
 #Network - DHCP and DNS
-	#General Settings
+	#General Settings 
 		#Local server
 		set dhcp.@dnsmasq[0].local='/mos.local/'
 		#Local domain
@@ -14,18 +14,18 @@ uci -q batch << EOI
 		#add_list dhcp.@dnsmasq[0].rebind_domain='plex.direct'
 
 	#Static Leases DEBUG ONLY
-		##mngt
-		#add dhcp host
-		#set dhcp.@host[-1].name='alpine_mngt'
-		#set dhcp.@host[-1].dns='1'
-		#set dhcp.@host[-1].mac='__WRTLAB_TEST_MNGT_MAC__'
-		#set dhcp.@host[-1].ip='__WRTLAB_TEST_MNGT_IP__'
-                ##dmz
-		#add dhcp host
-		#set dhcp.@host[-1].name='alpine_dmz'
-		#set dhcp.@host[-1].dns='1'
-		#set dhcp.@host[-1].mac='__WRTLAB_TEST_DMZ_MAC__'
-		#set dhcp.@host[-1].ip='__WRTLAB_TEST_DMZ_IP__'
+		#mngt
+		add dhcp host
+		set dhcp.@host[-1].name='alpine_mngt'
+		set dhcp.@host[-1].dns='1'
+		set dhcp.@host[-1].mac='__WRTLAB_TEST_MNGT_MAC__'
+		set dhcp.@host[-1].ip='__WRTLAB_TEST_MNGT_IP__'
+                #dmz
+		add dhcp host
+		set dhcp.@host[-1].name='alpine_dmz'
+		set dhcp.@host[-1].dns='1'
+		set dhcp.@host[-1].mac='__WRTLAB_TEST_DMZ_MAC__'
+		set dhcp.@host[-1].ip='__WRTLAB_TEST_DMZ_IP__'
 
 #Network - Interfaces - Devices
         #br-lan
@@ -142,12 +142,12 @@ uci -q batch << EOI
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
         #Rule 'Allow-uhttpd' DEBUG ONLY
-	#add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
-	#set firewall.@rule[-1].family='ipv4'
-	#set firewall.@rule[-1].src='*'
-	#set firewall.@rule[-1].dest_port='443'
-	#set firewall.@rule[-1].target='ACCEPT'
-	#add_list firewall.@rule[-1].proto='tcp'
+	add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].dest_port='443'
+	set firewall.@rule[-1].target='ACCEPT'
+	add_list firewall.@rule[-1].proto='tcp'
 
 #Network - Firewall - Zones
 	#LAN

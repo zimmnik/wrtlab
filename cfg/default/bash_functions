@@ -61,33 +61,34 @@ function build_image () {
     set -o nounset; set -o errexit; set -o xtrace;
     if [ "${IMG_PROXY_ENABLED}" = true ]; then sed -i -e "s/https/http/" repositories.conf && echo "option http_proxy ${IMG_PROXY_URL}" >> repositories.conf && cat repositories.conf; fi && \
     make -j4 image FILES="/opt/${IMG_FILES}/files" BIN_DIR="/opt/${IMG_FILES}/img" PACKAGES="$PACKAGES"; \
-    cd "/opt/${IMG_FILES}/img"; gzip -d openwrt-21.02.1-x86-64-generic-ext4-combined.img.gz || true; \
-    qemu-img convert -f raw -O qcow2 openwrt-21.02.1-x86-64-generic-ext4-combined.img "${IMG_NAME}.qcow2"'
+    cd "/opt/${IMG_FILES}/img"; gzip -d openwrt-21.02.2-x86-64-generic-ext4-combined.img.gz || true; \
+    qemu-img convert -f raw -O qcow2 openwrt-21.02.2-x86-64-generic-ext4-combined.img "${IMG_NAME}.qcow2"'
     #guestmount -a tmp/rr1router.qcow2 -i --rw mnt/
 }
 
 function virtnet_setup () {
   #-------------------------------------------------
-  if ! virsh net-info default | grep -q "Active:         yes"; then
-    virsh net-start default
-  fi
-
-  if ! virsh net-dumpxml default | grep -q "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>"; then
-    if virsh net-dumpxml default | grep -q "host mac='$WRTLAB_WAN_MAC'"; then
-      virsh net-update default modify ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
-    else
-      virsh net-update default add-last ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
+  if [ "${WRTLAB_VIRT_NETWORKS_ENABLED}" = true ]; then
+    if ! virsh net-info default | grep -q "Active:         yes"; then
+      virsh net-start default
     fi
-  fi
 
-  specific_virtnet_setup  
+    if ! virsh net-dumpxml default | grep -q "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>"; then
+      if virsh net-dumpxml default | grep -q "host mac='$WRTLAB_WAN_MAC'"; then
+        virsh net-update default modify ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
+      else
+        virsh net-update default add-last ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
+      fi
+    fi
+    specific_virtnet_setup  
+  fi
 }
 
 function deploy () {
 
   remove_vm "${NAME}"
-  #specific_deploy
-  #virtnet_setup
+  specific_deploy
+  virtnet_setup
 
   if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
     mkdir "$LIBVIRT_DIR_POOL_PATH" || true
