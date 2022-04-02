@@ -1,32 +1,146 @@
-P=P@ssw0rd echo -e "$P\n$P" | passwd
-#echo $(dd if=/dev/urandom bs=100 count=1 | tr -dc A-Za-z0-9) | passwd
+#P=P@ssw0rd echo -e "$P\n$P" | passwd
 uci -q batch << EOI
 #System - System - General Settings
 	#Hostname
 	set system.@system[0].hostname='__NAME__'
+
+#Network - DHCP and DNS
+	#General Settings
+		#Local server
+		set dhcp.@dnsmasq[0].local='/mos.local/'
+		#Local domain
+		set dhcp.@dnsmasq[0].domain='mos.local'
+		#Domain whitelist
+		#add_list dhcp.@dnsmasq[0].rebind_domain='plex.direct'
+
+	#Static Leases DEBUG ONLY
+		#mngt
+		add dhcp host
+		set dhcp.@host[-1].name='alpine_mngt'
+		set dhcp.@host[-1].dns='1'
+		set dhcp.@host[-1].mac='__WRTLAB_TEST_MNGT_MAC__'
+		set dhcp.@host[-1].ip='__WRTLAB_TEST_MNGT_IP__'
+                #dmz
+		add dhcp host
+		set dhcp.@host[-1].name='alpine_dmz'
+		set dhcp.@host[-1].dns='1'
+		set dhcp.@host[-1].mac='__WRTLAB_TEST_DMZ_MAC__'
+		set dhcp.@host[-1].ip='__WRTLAB_TEST_DMZ_IP__'
+
+#Network - Interfaces - Devices
+        #br-lan
+        delete network.@device[0]
+
+        #eth1
+        #delete network.@device[-1]
+
+        #vpn - Configure - Enable IPv6
+	add network device
+	set network.@device[-1].name='vpn'
+	set network.@device[-1].ipv6='0'
+
+        #eth2 - Configure - Enable IPv6
+        add network device
+        set network.@device[-1].name='eth2'
+        set network.@device[-1].ipv6='0'
+
+        #eth3 - Configure - Enable IPv6
+        add network device
+        set network.@device[-1].name='eth3'
+        set network.@device[-1].ipv6='0'
+
 #Network - Interfaces - Interfaces
-	#LAN - Edit - General Settings - IPv4 address
-	set network.lan.ipaddr='192.168.123.254'
-#Network - DHCP and DNS - General Settings
-	#Local server
-	set dhcp.@dnsmasq[0].local='/mos.local/'
-	#Local domain
-	set dhcp.@dnsmasq[0].domain='mos.local'
-	#Domain whitelist
-	add_list dhcp.@dnsmasq[0].rebind_domain='plex.direct'
-#Network - DHCP and DNS - Static Leases
-	add dhcp host
-	set dhcp.@host[-1].name='alpine'
-	set dhcp.@host[-1].dns='1'
-	set dhcp.@host[-1].mac='52:54:00:D9:8E:04'
-	set dhcp.@host[-1].ip='192.168.123.252'
+	#LAN - Edit - General Settings
+		delete network.lan
+
+	#WAN - Edit - General Settings
+		set network.wan=interface
+		#Protocol
+		set network.wan.proto='static'
+		#IPv4 address
+		set network.wan.ipaddr='__WRTLAB_WAN_IP__'
+		#IPv4 netmask
+		set network.wan.netmask='__WRTLAB_WAN_MASK__'
+		#IPv4 gateway
+		set network.wan.gateway='__WRTLAB_WAN_GW__'
+	#WAN - Edit - Advanced Settings
+		#Use custom DNS servers
+		set network.wan.dns='__WRTLAB_WAN_DNS__'
+
+	#mngt - Edit - Advanced Settings
+		set network.mngt=interface
+		set network.mngt.proto='static'
+		set network.mngt.device='__WRTLAB_MNGT_IF__'
+		set network.mngt.ipaddr='__WRTLAB_MNGT_IP__'
+		set network.mngt.netmask='__WRTLAB_MNGT_MASK_LONG__'
+	#dmz - Edit - Advanced Settings - DHCP Server
+		#General Setup
+		set dhcp.mngt=dhcp
+		set dhcp.mngt.interface='mngt'
+		set dhcp.mngt.start='100'
+		set dhcp.mngt.limit='150'
+		set dhcp.mngt.leasetime='12h'
+		set dhcp.mngt.start='1'
+		set dhcp.mngt.limit='100'
+		set dhcp.mngt.force='1'
+		add_list dhcp.mngt.ra_flags='none'
+
+	#home - Edit - Advanced Settings
+		set network.home=interface
+		set network.home.proto='static'
+		set network.home.device='__WRTLAB_HOME_IF__'
+		set network.home.ipaddr='__WRTLAB_HOME_IP__'
+		set network.home.netmask='__WRTLAB_HOME_MASK_LONG__'
+	#home - Edit - Advanced Settings - DHCP Server
+		#General Setup
+		set dhcp.home=dhcp
+		set dhcp.home.interface='home'
+		set dhcp.home.start='100'
+		set dhcp.home.limit='150'
+		set dhcp.home.leasetime='12h'
+		set dhcp.home.start='1'
+		set dhcp.home.limit='100'
+		set dhcp.home.force='1'
+		add_list dhcp.home.ra_flags='none'
+
+	#dmz - Edit - Advanced Settings
+		set network.dmz=interface
+		set network.dmz.proto='static'
+		set network.dmz.device='__WRTLAB_DMZ_IF__'
+		set network.dmz.ipaddr='__WRTLAB_DMZ_IP__'
+		set network.dmz.netmask='__WRTLAB_DMZ_MASK_LONG__'
+	#dmz - Edit - Advanced Settings - DHCP Server
+		#General Setup
+		set dhcp.dmz=dhcp
+		set dhcp.dmz.interface='dmz'
+		set dhcp.dmz.start='100'
+		set dhcp.dmz.limit='150'
+		set dhcp.dmz.leasetime='12h'
+		set dhcp.dmz.start='1'
+		set dhcp.dmz.limit='100'
+		set dhcp.dmz.force='1'
+		add_list dhcp.dmz.ra_flags='none'
+
+	#vpn - Edit - Advanced Settings
+		set network.vpn=interface
+		set network.vpn.proto='wireguard'
+		add network wireguard_vpn
+        	set network.vpn.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
+		set network.vpn.listen_port='__WRTLAB_VPN_PORT__'
+		add_list network.vpn.addresses='__WRTLAB_VPN_IP__/__WRTLAB_VPN_MASK_SHORT__'
+	#vpn - Peers DEBUG ONLY
+        	set network.@wireguard_vpn[-1].route_allowed_ips='1'
+        	set network.@wireguard_vpn[-1].description='testclient'
+        	set network.@wireguard_vpn[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
+        	add_list network.@wireguard_vpn[-1].allowed_ips='__WRTLAB_VPN_NET__'
+
 #Network - Firewall - Traffic rules
         #Rule 'Allow-Wireguard'
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Wireguard'
 	set firewall.@rule[-1].family='ipv4'
 	set firewall.@rule[-1].src='wan'
-	set firewall.@rule[-1].dest_port='5151'
+	set firewall.@rule[-1].dest_port='__WRTLAB_VPN_PORT__'
 	set firewall.@rule[-1].target='ACCEPT'
 	add_list firewall.@rule[-1].proto='udp'
         #Rule 'Allow-Iperf3'
@@ -36,31 +150,74 @@ uci -q batch << EOI
 	set firewall.@rule[-1].src='*'
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
-#Network - Firewall - General Settings
-	add firewall zone
-	set firewall.@zone[-1].name='vpn'
-	set firewall.@zone[-1].input='REJECT'
-	set firewall.@zone[-1].output='ACCEPT'
-	set firewall.@zone[-1].forward='REJECT'
-	set firewall.@zone[-1].masq='1'
-	add_list firewall.@zone[-1].network='WG'
-	add firewall forwarding
-	set firewall.@forwarding[-1].src='lan'
-	set firewall.@forwarding[-1].dest='vpn'
-#Network - Interfaces - WG
-	set network.WG=interface
-	set network.WG.proto='wireguard'
-	add network wireguard_WG
-	#set network.WG.private_key='$(cat /etc/wireguard/moswrt.key)'
-        set network.WG.private_key='4LmCvCIgkU1qDTuiNV2IRCwVr0/cH+fotYvuBxkqGVY='
-	set network.WG.listen_port='5151'
-	add_list network.WG.addresses='192.168.88.254/32'
-#Network - Interfaces - WG - Peers
-        set network.@wireguard_WG[-1].route_allowed_ips='1'
-        set network.@wireguard_WG[-1].description='nahwrt'
-        #set network.@wireguard_WG[0].public_key='$(cat /etc/wireguard/nahwrt.key | wg pubkey)'
-        set network.@wireguard_WG[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
-        add_list network.@wireguard_WG[-1].allowed_ips='192.168.88.253/32'
-        add_list network.@wireguard_WG[-1].allowed_ips='192.168.124.0/24'
+        #Rule 'Allow-uhttpd' DEBUG ONLY
+	add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
+	set firewall.@rule[-1].family='ipv4'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].dest_port='443'
+	set firewall.@rule[-1].target='ACCEPT'
+	add_list firewall.@rule[-1].proto='tcp'
+
+#Network - Firewall - Zones
+	#LAN
+		delete firewall.@zone[0]
+
+	#vpn
+		add firewall zone
+		set firewall.@zone[-1].name='vpn'
+		set firewall.@zone[-1].input='REJECT'
+		set firewall.@zone[-1].output='ACCEPT'
+		set firewall.@zone[-1].forward='REJECT'
+		set firewall.@zone[-1].masq='1'
+		add_list firewall.@zone[-1].network='vpn'
+	#mngt
+		add firewall zone
+		set firewall.@zone[-1].name='mngt'
+		set firewall.@zone[-1].input='ACCEPT'
+		set firewall.@zone[-1].output='ACCEPT'
+		set firewall.@zone[-1].forward='REJECT'
+		add_list firewall.@zone[-1].network='mngt'
+	#home
+		add firewall zone
+		set firewall.@zone[-1].name='home'
+		set firewall.@zone[-1].input='ACCEPT'
+		set firewall.@zone[-1].output='ACCEPT'
+		set firewall.@zone[-1].forward='ACCEPT'
+		add_list firewall.@zone[-1].network='home'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='home'
+		set firewall.@forwarding[-1].dest='wan'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='home'
+		set firewall.@forwarding[-1].dest='vpn'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='home'
+		set firewall.@forwarding[-1].dest='dmz'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='home'
+		set firewall.@forwarding[-1].dest='mngt'
+	#dmz
+		add firewall zone
+		set firewall.@zone[-1].name='dmz'
+		set firewall.@zone[-1].input='ACCEPT'
+		set firewall.@zone[-1].output='ACCEPT'
+		set firewall.@zone[-1].forward='ACCEPT'
+		add_list firewall.@zone[-1].network='dmz'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='dmz'
+		set firewall.@forwarding[-1].dest='wan'
+
+#Network - Firewall - Port forwards
+	#wireguard
+	add firewall redirect
+	add_list firewall.@redirect[-1].proto='udp'
+	set firewall.@redirect[-1].dest='wan'
+	set firewall.@redirect[-1].target='DNAT'
+	set firewall.@redirect[-1].name='wireguard'
+	set firewall.@redirect[-1].src='wan'
+	set firewall.@redirect[-1].src_dport='__WRTLAB_VPN_PORT_HIDDEN__'
+	set firewall.@redirect[-1].dest_ip='__WRTLAB_WAN_IP__'
+	set firewall.@redirect[-1].dest_port='__WRTLAB_VPN_PORT__'
+
 EOI
 uci commit

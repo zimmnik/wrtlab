@@ -25,6 +25,9 @@ uci -q batch << EOI
 		del dhcp.lan.ra
 		del dhcp.lan.ra_flags
 		add_list dhcp.lan.ra_flags='none'
+        #WAN - Edit - General Settings
+                #Device
+                set network.wan.device='__WRTLAB_WAN_IF__'
 #Network - Interfaces - Devices
 	#br-lan - Configure - Enable IPv6
 	set network.@device[0].ipv6='0'

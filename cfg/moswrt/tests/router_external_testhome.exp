@@ -1,0 +1,61 @@
+#!/usr/bin/expect -f
+#AUTHOR="Semyon Vasilkov <github@zimmnik.ru>"
+#FYI https://pantz.org/software/expect/expect_examples_and_tips.html
+
+set name [lindex $argv 0]
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname virsh_domain_name\n"
+  exit 1
+}
+
+log_user 1
+
+send_user "\nExternal test started ... \n"
+
+spawn virsh reset $name
+spawn virsh console $name
+
+set timeout 10
+expect {
+  "localhost login: $" {}
+  default { send_user "FAIL: console error\n"; exit 1 }
+}
+
+send -- "root\r"
+set prompt "localhost:~#"
+set timeout 3
+expect {
+  -re $prompt { send -- "\r" }
+  default { send_user "\nFAIL: prompt error\n"; exit 1 }
+}
+
+send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 8.8.8.8\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: google ping error\n"; exit 1 }
+}
+
+send -- "ping -c 1 __WRTLAB_TEST_MNGT_IP__\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: mngt ping error\n"; exit 1 }
+}
+
+send -- "ping -c 1 __WRTLAB_TEST_DMZ_IP__\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: dmz ping error\n"; exit 1 }
+}
+
+send -- "ping -c 1 __WRTLAB_TEST_VPN_IP__\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: vpn ping error\n"; exit 1 }
+}
+
+send_user "\nTest passed successfully\n\n"
+close

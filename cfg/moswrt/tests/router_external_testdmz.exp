@@ -10,36 +10,26 @@ if {[llength $argv] == 0} {
 
 log_user 1
 
-set send_slow {1 .1}
-proc send {ignore arg} {
-        sleep .2
-        exp_send -s -- $arg
-}
+send_user "\nExternal test started ... \n"
 
-send_user "\nTest started ... \n"
-
-#spawn virsh reset $name
+spawn virsh reset $name
 spawn virsh console $name
 
-send -- "\r"
-set prompt "(%|#|\\$) $"
-set timeout 30
+set timeout 10
 expect {
-  "Please press Enter to activate this console" {
-    sleep 3
-    send -- "\r"
-    expect {
-      -re $prompt {}
-      default { send_user "FAIL: console error\n"; exit 1 }
-    }
-  }
-  -re $prompt { send -- "\r" }
+  "localhost login: $" {}
   default { send_user "FAIL: console error\n"; exit 1 }
 }
 
-#flush stdout
-#send -- "time ping -c 1 172.28.1.1\r"
-send -- "ping -c 1 8.8.8.8\r"
+send -- "root\r"
+set prompt "localhost:~#"
+set timeout 3
+expect {
+  -re $prompt { send -- "\r" }
+  default { send_user "\nFAIL: prompt error\n"; exit 1 }
+}
+
+send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 __WRTLAB_DMZ_IP__\r"
 set timeout 10
 expect {
   " 0% packet loss" {}

@@ -1,5 +1,4 @@
 #!/bin/bash
-# VERSION=220223
 # shellcheck disable=SC1004,1090
 set -o xtrace
 set -o pipefail
@@ -20,9 +19,33 @@ function build_image () {
   cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
   chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
 
-  sed -i "s/__NAME__/${NAME}/" "tmp/${NAME}/files/etc/uci-defaults/99_custom"
+  grep -R -l __NAME__ 				"tmp/${NAME}" | xargs sed -i "s%__NAME__%${NAME}%g"
+
+  grep -R -l __WRTLAB_WAN_IF__ 			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IF__%${WRTLAB_WAN_IF}%g"
+  grep -R -l __WRTLAB_WAN_IP__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IP__%${WRTLAB_WAN_IP}%g"
+  grep -R -l __WRTLAB_WAN_MASK__                "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_MASK__%${WRTLAB_WAN_MASK}%g"
+  grep -R -l __WRTLAB_WAN_GW__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_GW__%${WRTLAB_WAN_GW}%g"
+  grep -R -l __WRTLAB_WAN_DNS__                 "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_DNS__%${WRTLAB_WAN_DNS}%g"
+
+  grep -R -l __WRTLAB_VPN_NET__                 "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VPN_NET__%${WRTLAB_VPN_NET}%g"
+  grep -R -l __WRTLAB_VPN_IP__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VPN_IP__%${WRTLAB_VPN_IP}%g"
+  grep -R -l __WRTLAB_VPN_MASK_SHORT__          "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VPN_MASK_SHORT__%${WRTLAB_VPN_MASK_SHORT}%g"
+  grep -R -l __WRTLAB_VPN_PORT__                "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT__/${WRTLAB_VPN_PORT}/g"
+  grep -R -l __WRTLAB_VPN_PORT_HIDDEN__         "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT_HIDDEN__/${WRTLAB_VPN_PORT_HIDDEN}/g"
+
+  grep -R -l __WRTLAB_TEST_VPN_IP__             "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_IP__%${WRTLAB_TEST_VPN_IP}%g"
+  grep -R -l __WRTLAB_TEST_VPN_GW__             "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_GW__%${WRTLAB_TEST_VPN_GW}%g"
+  grep -R -l __WRTLAB_TEST_VPN_NET__            "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_NET__%${WRTLAB_TEST_VPN_NET}%g"
+  grep -R -l __WRTLAB_TEST_VPN_MASK_SHORT__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_MASK_SHORT__%${WRTLAB_TEST_VPN_MASK_SHORT}%g"
+
+  grep -R -l __WRTLAB_PROXY_ENABLED__           "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_ENABLED__%${WRTLAB_PROXY_ENABLED}%g"
+  grep -R -l __WRTLAB_PROXY_URL_LIBVIRT__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_URL_LIBVIRT__%${WRTLAB_PROXY_URL_LIBVIRT}%g"
+  grep -R -l __WRTLAB_PROXY_FEDORA_MAIN__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_MAIN__%${WRTLAB_PROXY_FEDORA_MAIN}%g"
+  grep -R -l __WRTLAB_PROXY_FEDORA_CODECS__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_CODECS__%${WRTLAB_PROXY_FEDORA_CODECS}%g"
+
   specific_build_image
 
+  grep ping tmp/moswrt/tests/router_external_testmngt.exp
   #-------------------------------------------------
   if ! docker inspect --type=image fedora:35-wrtlab > /dev/null; then docker build -t fedora:35-wrtlab .; fi
 
@@ -30,9 +53,6 @@ function build_image () {
 
   PACKAGES="cgi-io libiwinfo libiwinfo-data libiwinfo-lua liblua liblucihttp liblucihttp-lua libubus-lua lua luci luci-app-firewall luci-app-opkg luci-base luci-lib-base luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system luci-proto-ppp luci-ssl px5g-wolfssl rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns uhttpd uhttpd-mod-ubus luci-app-wireguard arp-scan arp-scan-database grub2 grub2-efi kmod-fs-vfat kmod-nls-base kmod-nls-cp437 kmod-nls-iso8859-1 kmod-nls-utf8 iperf3 openssh-client-utils"
   FILES="tmp/${NAME}"
-
-  export WRTLAB_PROXY_ENABLED="true"
-  export WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
 
   docker run -it --rm -v "${PWD}:/opt:Z" \
   --env "IMG_NAME=${NAME}" --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" \
@@ -63,16 +83,11 @@ function virtnet_setup () {
   specific_virtnet_setup  
 }
 
-
 function deploy () {
-  virtnet_setup
 
-  if virsh dominfo "${NAME}" &> /dev/null; then
-    if virsh dominfo "${NAME}" | grep -q "State:          running"; then
-      virsh destroy "${NAME}"
-    fi
-    virsh undefine "${NAME}" --remove-all-storage
-  fi
+  remove_vm "${NAME}"
+  specific_deploy
+  virtnet_setup
 
   if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
     mkdir "$LIBVIRT_DIR_POOL_PATH" || true
@@ -86,7 +101,7 @@ function deploy () {
    --vcpus 1 --ram 128 --video none --graphics none  \
    --osinfo linux2020 --disk path="${LIBVIRT_DIR_POOL_PATH}/${NAME}.qcow2" \
    "${WRTLAB_WAN_NETWORKS[@]}" \
-   "${WRTLAB_HOME_NETWORKS[@]}" \
+   "${WRTLAB_LOCAL_NETWORKS[@]}" \
    --noautoconsole
 }
 
@@ -97,3 +112,64 @@ function test () {
   # specific test
   specific_test  
 }
+
+function remove_vm () {
+  local NAME=$1
+  if virsh dominfo "${NAME}" &> /dev/null; then
+    if virsh dominfo "${NAME}" | grep -q "State:          running"; then
+      virsh destroy "${NAME}"
+    fi
+    virsh undefine "${NAME}"
+  fi
+
+}
+
+function net_deploy () {
+  local NET_NAME=$1
+  local HOST_IP=$2
+  local NET_MASK=$3
+
+  if virsh net-info "${NET_NAME}"; then
+    if virsh net-info "${NET_NAME}" | grep -q "Active:         yes"; then
+      virsh net-destroy "${NET_NAME}"
+    fi
+    virsh net-undefine "${NET_NAME}"
+  fi
+
+  virsh net-define <(cat << EOF
+<network>
+  <name>${NET_NAME}</name>
+  <bridge stp='off'/>
+  <ip address='${HOST_IP}' netmask='${NET_MASK}'>
+  </ip>
+</network>
+EOF
+)
+  virsh net-start "${NET_NAME}"
+}
+
+function run_alpine315_test () {
+  local VM=$1
+  local TEST=$2
+  local NET=$3
+  local MAC=$4
+
+  if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" ]; then
+    WRTLAB_PATH="$PWD"
+    mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"
+    curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.0-x86_64.iso
+    curl -LO https://dl-cdn.alpinelinux.org/alpine/v3.15/releases/x86_64/alpine-virt-3.15.0-x86_64.iso.sha256
+    sha256sum --ignore-missing -c alpine-virt-3.15.0-x86_64.iso.sha256
+    rm -v alpine-virt-3.15.0-x86_64.iso.sha256
+    cd "$WRTLAB_PATH"
+  fi
+
+  remove_vm "${VM}"
+  virt-install -n "${VM}" --install no_install=yes \
+   --vcpus 1 --ram 256 --video none --graphics none \
+   --osinfo alpinelinux3.14 --disk device=cdrom,path="${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" \
+   --network "network=${NET},mac=${MAC}" \
+   --noautoconsole
+  "tmp/${NAME}/tests/router_external_${TEST}.exp" "${VM}"
+}
+
