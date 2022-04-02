@@ -14,25 +14,22 @@ uci -q batch << EOI
 		#add_list dhcp.@dnsmasq[0].rebind_domain='plex.direct'
 
 	#Static Leases DEBUG ONLY
-		#mngt
-		add dhcp host
-		set dhcp.@host[-1].name='alpine_mngt'
-		set dhcp.@host[-1].dns='1'
-		set dhcp.@host[-1].mac='__WRTLAB_TEST_MNGT_MAC__'
-		set dhcp.@host[-1].ip='__WRTLAB_TEST_MNGT_IP__'
-                #dmz
-		add dhcp host
-		set dhcp.@host[-1].name='alpine_dmz'
-		set dhcp.@host[-1].dns='1'
-		set dhcp.@host[-1].mac='__WRTLAB_TEST_DMZ_MAC__'
-		set dhcp.@host[-1].ip='__WRTLAB_TEST_DMZ_IP__'
+		##mngt
+		#add dhcp host
+		#set dhcp.@host[-1].name='alpine_mngt'
+		#set dhcp.@host[-1].dns='1'
+		#set dhcp.@host[-1].mac='__WRTLAB_TEST_MNGT_MAC__'
+		#set dhcp.@host[-1].ip='__WRTLAB_TEST_MNGT_IP__'
+                ##dmz
+		#add dhcp host
+		#set dhcp.@host[-1].name='alpine_dmz'
+		#set dhcp.@host[-1].dns='1'
+		#set dhcp.@host[-1].mac='__WRTLAB_TEST_DMZ_MAC__'
+		#set dhcp.@host[-1].ip='__WRTLAB_TEST_DMZ_IP__'
 
 #Network - Interfaces - Devices
         #br-lan
         delete network.@device[0]
-
-        #eth1
-        #delete network.@device[-1]
 
         #vpn - Configure - Enable IPv6
 	add network device
@@ -73,17 +70,15 @@ uci -q batch << EOI
 		set network.mngt.device='__WRTLAB_MNGT_IF__'
 		set network.mngt.ipaddr='__WRTLAB_MNGT_IP__'
 		set network.mngt.netmask='__WRTLAB_MNGT_MASK_LONG__'
-	#dmz - Edit - Advanced Settings - DHCP Server
+	#mngt - Edit - Advanced Settings - DHCP Server
 		#General Setup
 		set dhcp.mngt=dhcp
 		set dhcp.mngt.interface='mngt'
-		set dhcp.mngt.start='100'
-		set dhcp.mngt.limit='150'
 		set dhcp.mngt.leasetime='12h'
 		set dhcp.mngt.start='1'
 		set dhcp.mngt.limit='100'
 		set dhcp.mngt.force='1'
-		add_list dhcp.mngt.ra_flags='none'
+		add_list dhcp.dmz.ra_flags='none'
 
 	#home - Edit - Advanced Settings
 		set network.home=interface
@@ -95,8 +90,6 @@ uci -q batch << EOI
 		#General Setup
 		set dhcp.home=dhcp
 		set dhcp.home.interface='home'
-		set dhcp.home.start='100'
-		set dhcp.home.limit='150'
 		set dhcp.home.leasetime='12h'
 		set dhcp.home.start='1'
 		set dhcp.home.limit='100'
@@ -113,8 +106,6 @@ uci -q batch << EOI
 		#General Setup
 		set dhcp.dmz=dhcp
 		set dhcp.dmz.interface='dmz'
-		set dhcp.dmz.start='100'
-		set dhcp.dmz.limit='150'
 		set dhcp.dmz.leasetime='12h'
 		set dhcp.dmz.start='1'
 		set dhcp.dmz.limit='100'
@@ -136,13 +127,13 @@ uci -q batch << EOI
 
 #Network - Firewall - Traffic rules
         #Rule 'Allow-Wireguard'
-	add firewall rule
-	set firewall.@rule[-1].name='Allow-Wireguard'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].src='wan'
-	set firewall.@rule[-1].dest_port='__WRTLAB_VPN_PORT__'
-	set firewall.@rule[-1].target='ACCEPT'
-	add_list firewall.@rule[-1].proto='udp'
+	#add firewall rule
+	#set firewall.@rule[-1].name='Allow-Wireguard'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].src='wan'
+	#set firewall.@rule[-1].dest_port='__WRTLAB_VPN_PORT__'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#add_list firewall.@rule[-1].proto='udp'
         #Rule 'Allow-Iperf3'
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Iperf3'
@@ -151,12 +142,12 @@ uci -q batch << EOI
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
         #Rule 'Allow-uhttpd' DEBUG ONLY
-	add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].src='*'
-	set firewall.@rule[-1].dest_port='443'
-	set firewall.@rule[-1].target='ACCEPT'
-	add_list firewall.@rule[-1].proto='tcp'
+	#add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].src='*'
+	#set firewall.@rule[-1].dest_port='443'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#add_list firewall.@rule[-1].proto='tcp'
 
 #Network - Firewall - Zones
 	#LAN
@@ -177,6 +168,12 @@ uci -q batch << EOI
 		set firewall.@zone[-1].output='ACCEPT'
 		set firewall.@zone[-1].forward='REJECT'
 		add_list firewall.@zone[-1].network='mngt'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='mngt'
+		set firewall.@forwarding[-1].dest='wan'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='mngt'
+		set firewall.@forwarding[-1].dest='vpn'
 	#home
 		add firewall zone
 		set firewall.@zone[-1].name='home'
@@ -193,9 +190,6 @@ uci -q batch << EOI
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='home'
 		set firewall.@forwarding[-1].dest='dmz'
-		add firewall forwarding
-		set firewall.@forwarding[-1].src='home'
-		set firewall.@forwarding[-1].dest='mngt'
 	#dmz
 		add firewall zone
 		set firewall.@zone[-1].name='dmz'

@@ -86,8 +86,8 @@ function virtnet_setup () {
 function deploy () {
 
   remove_vm "${NAME}"
-  specific_deploy
-  virtnet_setup
+  #specific_deploy
+  #virtnet_setup
 
   if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
     mkdir "$LIBVIRT_DIR_POOL_PATH" || true
@@ -103,6 +103,8 @@ function deploy () {
    "${WRTLAB_WAN_NETWORKS[@]}" \
    "${WRTLAB_LOCAL_NETWORKS[@]}" \
    --noautoconsole
+
+  virsh autostart "${NAME}"
 }
 
 function test () {
