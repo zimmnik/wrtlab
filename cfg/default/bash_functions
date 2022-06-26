@@ -7,11 +7,27 @@ set -o errexit
 
 source "cfg/${NAME}/bash_functions"
 
+system_check () {
+  UTILITES_LIST=("expect" "docker" "virsh" "virt-install")
+  for UTILITY in "${UTILITES_LIST[@]}"; do
+    if ! command -v "${UTILITY}" > /dev/null; then echo "${UTILITY} check error"; return 1; fi
+  done
+
+  if [ "${WRTLAB_PROXY_ENABLED}" = true ]; then
+    curl -L http://downloads.openwrt.org/snapshots/targets/x86/64/version.buildinfo -s -o /dev/null -x "${WRTLAB_PROXY_URL_DOCKER}"
+    curl -L http://downloads.openwrt.org/snapshots/targets/x86/64/version.buildinfo -s -o /dev/null -x "${WRTLAB_PROXY_URL_LIBVIRT}"
+  fi
+}
+
 function build_image () {
+  system_check
+
   #-------------------------------------------------
   if [ ! -d tmp ]; then mkdir -v tmp; fi
   if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
   mkdir -v "tmp/${NAME}"
+  cp -v Dockerfile "tmp/${NAME}/"
+  cp -v dockerfile_bootstrap.sh "tmp/${NAME}/"
   cp -rvT cfg/default/ "tmp/${NAME}/"
   cp -rvT "cfg/${NAME}/" "tmp/${NAME}/"
 
@@ -20,6 +36,7 @@ function build_image () {
   chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
 
   grep -R -l __NAME__ 				"tmp/${NAME}" | xargs sed -i "s%__NAME__%${NAME}%g"
+  grep -R -l __WRTLAB_VERSION__			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VERSION__%${WRTLAB_VERSION}%g"
 
   grep -R -l __WRTLAB_WAN_IF__ 			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IF__%${WRTLAB_WAN_IF}%g"
   grep -R -l __WRTLAB_WAN_IP__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IP__%${WRTLAB_WAN_IP}%g"
@@ -39,15 +56,19 @@ function build_image () {
   grep -R -l __WRTLAB_TEST_VPN_MASK_SHORT__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_MASK_SHORT__%${WRTLAB_TEST_VPN_MASK_SHORT}%g"
 
   grep -R -l __WRTLAB_PROXY_ENABLED__           "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_ENABLED__%${WRTLAB_PROXY_ENABLED}%g"
+  grep -R -l __WRTLAB_PROXY_URL_DOCKER__        "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_URL_DOCKER__%${WRTLAB_PROXY_URL_DOCKER}%g"
   grep -R -l __WRTLAB_PROXY_URL_LIBVIRT__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_URL_LIBVIRT__%${WRTLAB_PROXY_URL_LIBVIRT}%g"
   grep -R -l __WRTLAB_PROXY_FEDORA_MAIN__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_MAIN__%${WRTLAB_PROXY_FEDORA_MAIN}%g"
   grep -R -l __WRTLAB_PROXY_FEDORA_CODECS__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_CODECS__%${WRTLAB_PROXY_FEDORA_CODECS}%g"
 
   specific_build_image
 
-  grep ping tmp/moswrt/tests/router_external_testmngt.exp
   #-------------------------------------------------
-  if ! docker inspect --type=image fedora:35-wrtlab > /dev/null; then docker build -t fedora:35-wrtlab .; fi
+  if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
+    cd "tmp/${NAME}/"
+    docker build -t "wrtlab:${WRTLAB_VERSION}" .
+    cd ../..
+  fi
 
   rm -rfv img/*
 
@@ -55,14 +76,15 @@ function build_image () {
   FILES="tmp/${NAME}"
 
   docker run -it --rm -v "${PWD}:/opt:Z" \
-  --env "IMG_NAME=${NAME}" --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" \
+  --env "IMG_NAME=${NAME}" --env "IMG_VERSION=${WRTLAB_VERSION}" \
+  --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" \
   --env "IMG_PROXY_ENABLED=${WRTLAB_PROXY_ENABLED}" --env "IMG_PROXY_URL=${WRTLAB_PROXY_URL_DOCKER}" \
-  fedora:35-wrtlab bash -c '\
+  "wrtlab:${WRTLAB_VERSION}" bash -c '\
     set -o nounset; set -o errexit; set -o xtrace;
     if [ "${IMG_PROXY_ENABLED}" = true ]; then sed -i -e "s/https/http/" repositories.conf && echo "option http_proxy ${IMG_PROXY_URL}" >> repositories.conf && cat repositories.conf; fi && \
     make -j4 image FILES="/opt/${IMG_FILES}/files" BIN_DIR="/opt/${IMG_FILES}/img" PACKAGES="$PACKAGES"; \
-    cd "/opt/${IMG_FILES}/img"; gzip -d openwrt-21.02.2-x86-64-generic-ext4-combined.img.gz || true; \
-    qemu-img convert -f raw -O qcow2 openwrt-21.02.2-x86-64-generic-ext4-combined.img "${IMG_NAME}.qcow2"'
+    cd "/opt/${IMG_FILES}/img"; gzip -d "openwrt-${IMG_VERSION}-x86-64-generic-ext4-combined.img.gz" || true; \
+    qemu-img convert -f raw -O qcow2 "openwrt-${IMG_VERSION}-x86-64-generic-ext4-combined.img" "${IMG_NAME}.qcow2"'
     #guestmount -a tmp/rr1router.qcow2 -i --rw mnt/
 }
 
