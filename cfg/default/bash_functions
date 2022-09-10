@@ -19,7 +19,7 @@ system_check () {
   fi
 }
 
-function build_image () {
+function build () {
   system_check
 
   #-------------------------------------------------
@@ -61,7 +61,7 @@ function build_image () {
   grep -R -l __WRTLAB_PROXY_FEDORA_MAIN__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_MAIN__%${WRTLAB_PROXY_FEDORA_MAIN}%g"
   grep -R -l __WRTLAB_PROXY_FEDORA_CODECS__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_CODECS__%${WRTLAB_PROXY_FEDORA_CODECS}%g"
 
-  specific_build_image
+  specific_build
 
   #-------------------------------------------------
   if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
@@ -106,12 +106,21 @@ function virtnet_setup () {
   fi
 }
 
-function deploy () {
+function test () {
 
+function test () {
   remove_vm "${NAME}"
-  specific_deploy
   virtnet_setup
+  run_openwrt
 
+  # default test
+  cfg/default/tests/router_internal_test.exp "${NAME}"
+
+  # specific test
+  specific_test  
+}
+
+function run_openwrt () {
   if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
     mkdir "$LIBVIRT_DIR_POOL_PATH" || true
     chown "${USER}:qemu" "$LIBVIRT_DIR_POOL_PATH"
@@ -127,15 +136,7 @@ function deploy () {
    "${WRTLAB_LOCAL_NETWORKS[@]}" \
    --noautoconsole
 
-  virsh autostart "${NAME}"
-}
-
-function test () {
-  # default test
-  cfg/default/tests/router_internal_test.exp "${NAME}"
-
-  # specific test
-  specific_test  
+  #virsh autostart "${NAME}"
 }
 
 function remove_vm () {

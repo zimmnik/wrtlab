@@ -6,7 +6,7 @@ set -o pipefail
 set -o nounset
 set -o errexit
 
-function specific_build_image () {
+function specific_build () {
   sed -i "s/__WG_SERVER_IP__/${WG_SERVER_IP}/" "tmp/$NAME/files/etc/uci-defaults/99_custom"
 }
 

@@ -41,8 +41,7 @@ WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
 source cfg/default/bash_functions
 
 main () {
-  build_image
-  deploy
+  build
   test
 }
 

@@ -5,7 +5,7 @@ set -o pipefail
 set -o nounset
 set -o errexit
 
-function specific_build_image () {
+function specific_build () {
   grep -R -l __WRTLAB_MNGT_IF__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IF__%${WRTLAB_MNGT_IF}%g"
   grep -R -l __WRTLAB_MNGT_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IP__%${WRTLAB_MNGT_IP}%g"
   grep -R -l __WRTLAB_MNGT_IP_HOST__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IP_HOST__%${WRTLAB_MNGT_IP_HOST}%g"
@@ -30,13 +30,6 @@ function specific_build_image () {
 
 }
 
-function specific_deploy () {
-  remove_vm "${NAME}_testvpn"
-  remove_vm "${NAME}_testmngt"
-  remove_vm "${NAME}_testhome"
-  remove_vm "${NAME}_testdmz"
-}
-
 function specific_virtnet_setup () {
   net_deploy "${WRTLAB_MNGT_NAME}" "${WRTLAB_MNGT_IP_HOST}" "${WRTLAB_MNGT_MASK_LONG}"
   net_deploy "${WRTLAB_HOME_NAME}" "${WRTLAB_HOME_IP_HOST}" "${WRTLAB_HOME_MASK_LONG}"
@@ -44,6 +37,11 @@ function specific_virtnet_setup () {
 }
 
 function specific_test () {
+  remove_vm "${NAME}_testvpn"
+  remove_vm "${NAME}_testmngt"
+  remove_vm "${NAME}_testhome"
+  remove_vm "${NAME}_testdmz"
+
   if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" ]; then
     WRTLAB_PATH="$PWD"
     mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"

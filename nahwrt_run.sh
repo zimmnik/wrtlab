@@ -24,9 +24,8 @@ export NET_HOME="network=${ROUTER_HOME_NET_NAME}"
 source cfg/default/bash_functions
 
 main () {
-  build_image
+  build
   virtnet_setup
-  deploy
   test
 }
 
