@@ -35,5 +35,5 @@ function specific_test () {
    --network "${NET_HOME},mac=52:54:00:d9:8e:03" \
    --noautoconsole
   
-  "cfg/${NAME}/tests/router_external_test.exp" "${NAME}_testclient"
+  "profile/${NAME}/tests/router_external_test.exp" "${NAME}_testclient"
 }

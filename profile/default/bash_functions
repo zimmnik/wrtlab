@@ -5,7 +5,7 @@ set -o pipefail
 set -o nounset
 set -o errexit
 
-source "cfg/${NAME}/bash_functions"
+source "profile/${NAME}/bash_functions"
 
 system_check () {
   UTILITES_LIST=("expect" "docker" "virsh" "virt-install")
@@ -28,8 +28,8 @@ function build () {
   mkdir -v "tmp/${NAME}"
   cp -v Dockerfile "tmp/${NAME}/"
   cp -v dockerfile_bootstrap.sh "tmp/${NAME}/"
-  cp -rvT cfg/default/ "tmp/${NAME}/"
-  cp -rvT "cfg/${NAME}/" "tmp/${NAME}/"
+  cp -rvT profile/default/ "tmp/${NAME}/"
+  cp -rvT "profile/${NAME}/" "tmp/${NAME}/"
 
   mkdir -p "tmp/${NAME}/files/etc/dropbear/"
   cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
@@ -107,14 +107,12 @@ function virtnet_setup () {
 }
 
 function test () {
-
-function test () {
   remove_vm "${NAME}"
   virtnet_setup
   run_openwrt
 
   # default test
-  cfg/default/tests/router_internal_test.exp "${NAME}"
+  profile/default/tests/router_internal_test.exp "${NAME}"
 
   # specific test
   specific_test  
@@ -198,4 +196,3 @@ function run_alpine315_test () {
    --noautoconsole
   "tmp/${NAME}/tests/router_external_${TEST}.exp" "${VM}"
 }
-

@@ -21,7 +21,7 @@ export NET_HOME="network=${ROUTER_HOME_NET_NAME}"
 
 #NET_INET="type=direct,source=eno1,source_mode=bridge,mac=52:54:00:55:90:00"
 
-source cfg/default/bash_functions
+source profile/default/bash_functions
 
 main () {
   build

@@ -68,7 +68,7 @@ WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
 WRTLAB_PROXY_FEDORA_MAIN="http://fedora.mirrorservice.org/fedora"
 WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
 
-source cfg/default/bash_functions
+source profile/default/bash_functions
 
 main () {
   build_image
