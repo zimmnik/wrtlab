@@ -121,7 +121,6 @@ uci -q batch << EOI
 		set network.vpn.listen_port='__WRTLAB_VPN_PORT__'
 		add_list network.vpn.addresses='__WRTLAB_VPN_IP__/__WRTLAB_VPN_MASK_SHORT__'
 	#vpn - Peers DEBUG ONLY
-        	set network.@wireguard_vpn[-1].route_allowed_ips='1'
         	set network.@wireguard_vpn[-1].description='testclient'
         	set network.@wireguard_vpn[-1].public_key='wI/ESFQFyLyVGYTlT+mPAseC/Ly6rfDNgicRJkOCq2I='
         	add_list network.@wireguard_vpn[-1].allowed_ips='__WRTLAB_VPN_NET__'
