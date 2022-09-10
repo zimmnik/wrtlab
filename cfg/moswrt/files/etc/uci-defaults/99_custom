@@ -1,4 +1,4 @@
-#P=P@ssw0rd echo -e "$P\n$P" | passwd
+P=P@ssw0rd echo -e "$P\n$P" | passwd
 uci -q batch << EOI
 #System - System - General Settings
 	#Hostname
@@ -13,19 +13,19 @@ uci -q batch << EOI
 		#Domain whitelist
 		#add_list dhcp.@dnsmasq[0].rebind_domain='plex.direct'
 
-	#Static Leases DEBUG ONLY
-		#mngt
+	#Static Leases
 		add dhcp host
-		set dhcp.@host[-1].name='alpine_mngt'
+		set dhcp.@host[-1].name='squid'
 		set dhcp.@host[-1].dns='1'
-		set dhcp.@host[-1].mac='__WRTLAB_TEST_MNGT_MAC__'
-		set dhcp.@host[-1].ip='__WRTLAB_TEST_MNGT_IP__'
-                #dmz
+		set dhcp.@host[-1].mac='92:D0:C6:0B:29:35'
+		set dhcp.@host[-1].ip='192.168.4.253'
+		
 		add dhcp host
-		set dhcp.@host[-1].name='alpine_dmz'
+		set dhcp.@host[-1].name='probook'
 		set dhcp.@host[-1].dns='1'
-		set dhcp.@host[-1].mac='__WRTLAB_TEST_DMZ_MAC__'
-		set dhcp.@host[-1].ip='__WRTLAB_TEST_DMZ_IP__'
+		set dhcp.@host[-1].mac='50:81:40:9F:32:7F'
+		set dhcp.@host[-1].ip='192.168.4.252'
+
 
 #Network - Interfaces - Devices
         #br-lan
@@ -78,7 +78,8 @@ uci -q batch << EOI
 		set dhcp.mngt.start='1'
 		set dhcp.mngt.limit='100'
 		set dhcp.mngt.force='1'
-		add_list dhcp.dmz.ra_flags='none'
+		add_list dhcp.mngt.ra_flags='none'
+		set dhcp.mngt.dynamicdhcp='0'
 
 	#home - Edit - Advanced Settings
 		set network.home=interface
@@ -142,12 +143,12 @@ uci -q batch << EOI
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
         #Rule 'Allow-uhttpd' DEBUG ONLY
-	add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].src='*'
-	set firewall.@rule[-1].dest_port='443'
-	set firewall.@rule[-1].target='ACCEPT'
-	add_list firewall.@rule[-1].proto='tcp'
+	#add firewall rule set firewall.@rule[-1].name='Allow-Uhttpd'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].src='*'
+	#set firewall.@rule[-1].dest_port='443'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#add_list firewall.@rule[-1].proto='tcp'
 
 #Network - Firewall - Zones
 	#LAN
@@ -156,11 +157,14 @@ uci -q batch << EOI
 	#vpn
 		add firewall zone
 		set firewall.@zone[-1].name='vpn'
-		set firewall.@zone[-1].input='REJECT'
+		set firewall.@zone[-1].input='ACCEPT'
 		set firewall.@zone[-1].output='ACCEPT'
 		set firewall.@zone[-1].forward='REJECT'
 		set firewall.@zone[-1].masq='1'
 		add_list firewall.@zone[-1].network='vpn'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='vpn'
+		set firewall.@forwarding[-1].dest='wan'
 	#mngt
 		add firewall zone
 		set firewall.@zone[-1].name='mngt'
@@ -171,9 +175,6 @@ uci -q batch << EOI
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='mngt'
 		set firewall.@forwarding[-1].dest='wan'
-		add firewall forwarding
-		set firewall.@forwarding[-1].src='mngt'
-		set firewall.@forwarding[-1].dest='vpn'
 	#home
 		add firewall zone
 		set firewall.@zone[-1].name='home'
@@ -186,10 +187,10 @@ uci -q batch << EOI
 		set firewall.@forwarding[-1].dest='wan'
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='home'
-		set firewall.@forwarding[-1].dest='vpn'
+		set firewall.@forwarding[-1].dest='dmz'
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='home'
-		set firewall.@forwarding[-1].dest='dmz'
+		set firewall.@forwarding[-1].dest='vpn'
 	#dmz
 		add firewall zone
 		set firewall.@zone[-1].name='dmz'
@@ -213,5 +214,14 @@ uci -q batch << EOI
 	set firewall.@redirect[-1].dest_ip='__WRTLAB_WAN_IP__'
 	set firewall.@redirect[-1].dest_port='__WRTLAB_VPN_PORT__'
 
+	add firewall redirect
+	add_list firewall.@redirect[-1].proto='tcp'
+	set firewall.@redirect[-1].dest='dmz'
+	set firewall.@redirect[-1].target='DNAT'
+	set firewall.@redirect[-1].name='MFT'
+	set firewall.@redirect[-1].src='wan'
+	set firewall.@redirect[-1].src_dport='54321'
+	set firewall.@redirect[-1].dest_ip='192.168.3.64'
+	set firewall.@redirect[-1].dest_port='54321'
 EOI
 uci commit

@@ -117,7 +117,7 @@ function deploy () {
     chown "${USER}:qemu" "$LIBVIRT_DIR_POOL_PATH"
     chmod g+rws "$LIBVIRT_DIR_POOL_PATH"
   fi
-  cp -v "tmp/${NAME}/img/${NAME}.qcow2" "$LIBVIRT_DIR_POOL_PATH"
+  cp -fv "tmp/${NAME}/img/${NAME}.qcow2" "$LIBVIRT_DIR_POOL_PATH"
   
   #osinfo-query os
   virt-install -n "${NAME}" --install no_install=yes \

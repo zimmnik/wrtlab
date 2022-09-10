@@ -29,11 +29,31 @@ expect {
   default { send_user "\nFAIL: prompt error\n"; exit 1 }
 }
 
-send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 __WRTLAB_DMZ_IP__\r"
+send -- "\
+export KEYMAPOPTS=\"us us\" && \
+export INTERFACESOPTS=\"auto lo
+iface lo inet loopback
+
+auto eth0
+iface eth0 inet dhcp
+    hostname alpine-dmz
+\" && \
+echo \"alpine-dmz\" > /etc/hostname && \
+hostname -F /etc/hostname && \
+setup-alpine -q && \
+ip r && \
+ping -c 1 __WRTLAB_DMZ_IP__\r"
 set timeout 10
 expect {
   " 0% packet loss" {}
-  default { send_user "FAIL: ping error\n"; exit 1 }
+  default { send_user "FAIL: gateway ping error\n"; exit 1 }
+}
+
+send -- "ping -c 1 ya.ru\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: internet ping error\n"; exit 1 }
 }
 
 send_user "\nTest passed successfully\n\n"

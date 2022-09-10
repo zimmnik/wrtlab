@@ -47,13 +47,13 @@ uci -q batch << EOI
 	# ZONE WAN
 	set firewall.@zone[1].family='ipv4'
 #Network - Firewall - Traffic rules
-	add firewall rule
-	set firewall.@rule[-1].name='Allow-DHCP-Renew'
-	set firewall.@rule[-1].target='ACCEPT'
-	set firewall.@rule[-1].src='wan'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].dest_port='68'
-	add_list firewall.@rule[-1].proto='udp'
+	#add firewall rule
+	#set firewall.@rule[-1].name='Allow-DHCP-Renew'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#set firewall.@rule[-1].src='wan'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].dest_port='68'
+	#add_list firewall.@rule[-1].proto='udp'
 	
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Ping'

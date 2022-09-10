@@ -29,33 +29,40 @@ expect {
   default { send_user "\nFAIL: prompt error\n"; exit 1 }
 }
 
-send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 8.8.8.8\r"
+send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 __WRTLAB_HOME_IP__\r"
 set timeout 10
 expect {
   " 0% packet loss" {}
-  default { send_user "FAIL: wan ping error\n"; exit 1 }
+  default { send_user "FAIL: gateway ping error\n"; exit 1 }
 }
 
-#send -- "ping -c 1 __WRTLAB_TEST_MNGT_IP__\r"
-#set timeout 10
-#expect {
-#  " 0% packet loss" {}
-#  default { send_user "FAIL: mngt ping error\n"; exit 1 }
-#}
+send -- "ping -c 1 ya.ru\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: internet ping error\n"; exit 1 }
+}
 
-send -- "ping -c 1 __WRTLAB_TEST_DMZ_IP__\r"
+send -- "ping -c 1 alpine-dmz.mos.local\r"
 set timeout 10
 expect {
   " 0% packet loss" {}
   default { send_user "FAIL: dmz ping error\n"; exit 1 }
 }
 
-send -- "ping -c 1 __WRTLAB_TEST_VPN_IP__\r"
+send -- "ping -c 1 __WRTLAB_VPN_IP__\r"
 set timeout 10
 expect {
   " 0% packet loss" {}
   default { send_user "FAIL: vpn ping error\n"; exit 1 }
 }
+
+#send -- "ping -c 1 __WRTLAB_TEST_VPN_IP__\r"
+#set timeout 10
+#expect {
+#  " 0% packet loss" {}
+#  default { send_user "FAIL: vpn ping error\n"; exit 1 }
+#}
 
 send_user "\nTest passed successfully\n\n"
 close

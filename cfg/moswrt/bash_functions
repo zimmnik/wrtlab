@@ -8,6 +8,7 @@ set -o errexit
 function specific_build_image () {
   grep -R -l __WRTLAB_MNGT_IF__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IF__%${WRTLAB_MNGT_IF}%g"
   grep -R -l __WRTLAB_MNGT_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IP__%${WRTLAB_MNGT_IP}%g"
+  grep -R -l __WRTLAB_MNGT_IP_HOST__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IP_HOST__%${WRTLAB_MNGT_IP_HOST}%g"
   grep -R -l __WRTLAB_MNGT_MASK_LONG__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_MASK_LONG__%${WRTLAB_MNGT_MASK_LONG}%g"
 
   grep -R -l __WRTLAB_HOME_IF__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_HOME_IF__%${WRTLAB_HOME_IF}%g"
@@ -46,10 +47,10 @@ function specific_test () {
   if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" ]; then
     WRTLAB_PATH="$PWD"
     mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"
-    curl -LO https://mirror.yandex.ru/fedora/linux/releases/34/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-36-1.5.iso
-    curl -LO https://mirror.yandex.ru/fedora/linux/releases/34/Workstation/x86_64/iso/Fedora-Workstation-34-1.2-x86_64-CHECKSUM
-    sha256sum --ignore-missing -c Fedora-Workstation-34-1.2-x86_64-CHECKSUM
-    rm -v Fedora-Workstation-34-1.2-x86_64-CHECKSUM
+    curl -LO https://download.fedoraproject.org/pub/fedora/linux/releases/36/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-36-1.5.iso
+    curl -LO https://download.fedoraproject.org/pub/fedora/linux/releases/36/Workstation/x86_64/iso/Fedora-Workstation-36-1.5-x86_64-CHECKSUM
+    sha256sum --ignore-missing -c Fedora-Workstation-36-1.5-x86_64-CHECKSUM
+    rm -v Fedora-Workstation-36-1.5-x86_64-CHECKSUM
     cd "$WRTLAB_PATH"
   fi
 
@@ -58,7 +59,7 @@ function specific_test () {
    --vcpus 1 --ram 2048 --video none --graphics none \
    --osinfo linux2020 --disk none --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
    --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-36-1-5 rd.live.image systemd.unit=multi-user.target" \
-   "${WRTLAB_TEST_NETWORKS[@]}" \
+   "${WRTLAB_TEST_VPN_EXT_NETWORKS[@]}" \
    --noautoconsole
   "tmp/${NAME}/tests/router_external_test_vpn.exp" "${NAME}_testvpn"
 
