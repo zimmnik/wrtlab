@@ -38,7 +38,7 @@ WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
 WRTLAB_PROXY_FEDORA_MAIN="http://ftp.halifax.rwth-aachen.de/fedora"
 WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
 
-source profile/default/bash_functions
+source profile/common/bash_functions
 
 main () {
   build

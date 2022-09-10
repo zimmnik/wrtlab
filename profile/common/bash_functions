@@ -28,7 +28,7 @@ function build () {
   mkdir -v "tmp/${NAME}"
   cp -v Dockerfile "tmp/${NAME}/"
   cp -v dockerfile_bootstrap.sh "tmp/${NAME}/"
-  cp -rvT profile/default/ "tmp/${NAME}/"
+  cp -rvT profile/common/ "tmp/${NAME}/"
   cp -rvT "profile/${NAME}/" "tmp/${NAME}/"
 
   mkdir -p "tmp/${NAME}/files/etc/dropbear/"
@@ -112,7 +112,7 @@ function test () {
   run_openwrt
 
   # default test
-  profile/default/tests/router_internal_test.exp "${NAME}"
+  profile/common/tests/router_internal_test.exp "${NAME}"
 
   # specific test
   specific_test  
