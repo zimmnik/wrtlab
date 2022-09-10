@@ -7,6 +7,11 @@ set -o errexit
 
 source "profile/${NAME}/bash_functions"
 
+WRTLAB_PROXY_URL_LIBVIRT="http://${WRTLAB_WAN_GW}:3128"
+WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
+WRTLAB_PROXY_FEDORA_MAIN="http://fedora.mirrorservice.org/fedora"
+WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
+
 system_check () {
   UTILITES_LIST=("expect" "docker" "virsh" "virt-install")
   for UTILITY in "${UTILITES_LIST[@]}"; do
@@ -26,8 +31,8 @@ function build () {
   if [ ! -d tmp ]; then mkdir -v tmp; fi
   if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
   mkdir -v "tmp/${NAME}"
-  cp -v Dockerfile "tmp/${NAME}/"
-  cp -v dockerfile_bootstrap.sh "tmp/${NAME}/"
+  cp -v builder/Dockerfile "tmp/${NAME}/"
+  cp -v builder/bootstrap.sh "tmp/${NAME}/"
   cp -rvT profile/common/ "tmp/${NAME}/"
   cp -rvT "profile/${NAME}/" "tmp/${NAME}/"
 
