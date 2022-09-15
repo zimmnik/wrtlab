@@ -12,6 +12,10 @@ WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
 WRTLAB_PROXY_FEDORA_MAIN="http://fedora.mirrorservice.org/fedora"
 WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
 
+lint () {
+  find profile -type f -name 'bash_functions' -exec shellcheck run.sh {} \+
+} 
+
 system_check () {
   UTILITES_LIST=("expect" "docker" "virsh" "virt-install")
   for UTILITY in "${UTILITES_LIST[@]}"; do
