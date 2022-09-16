@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1004,2034
-set -o xtrace
+#set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
@@ -58,28 +58,29 @@ WRTLAB_TEST_VPN_EXT_NETWORKS=(--network "network=default,mac=${WRTLAB_TEST_VPN_E
 #export WRTLAB_LOCAL_NETWORKS=(--network "network=default,mac=${WRTLAB_WAN_MAC}")
 #export NET_INET="type=direct,source=eno1,source_mode=bridge"
 
-function specific_build () {
-  grep -R -l __WRTLAB_MNGT_IF__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IF__%${WRTLAB_MNGT_IF}%g"
-  grep -R -l __WRTLAB_MNGT_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IP__%${WRTLAB_MNGT_IP}%g"
-  grep -R -l __WRTLAB_MNGT_IP_HOST__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_IP_HOST__%${WRTLAB_MNGT_IP_HOST}%g"
-  grep -R -l __WRTLAB_MNGT_MASK_LONG__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_MNGT_MASK_LONG__%${WRTLAB_MNGT_MASK_LONG}%g"
+function bake_vars_specific () {
+  #FYI https://unix.stackexchange.com/questions/330660/prevent-grep-from-exiting-in-case-of-nomatch
+  grep -R -l __WRTLAB_MNGT_IF__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_MNGT_IF__%${WRTLAB_MNGT_IF}%g"               || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_MNGT_IP__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_MNGT_IP__%${WRTLAB_MNGT_IP}%g"               || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_MNGT_IP_HOST__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_MNGT_IP_HOST__%${WRTLAB_MNGT_IP_HOST}%g"     || [[ $? == 1 ]] 
+  grep -R -l __WRTLAB_MNGT_MASK_LONG__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_MNGT_MASK_LONG__%${WRTLAB_MNGT_MASK_LONG}%g" || [[ $? == 1 ]]
 
-  grep -R -l __WRTLAB_HOME_IF__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_HOME_IF__%${WRTLAB_HOME_IF}%g"
-  grep -R -l __WRTLAB_HOME_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_HOME_IP__%${WRTLAB_HOME_IP}%g"
-  grep -R -l __WRTLAB_HOME_MASK_LONG__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_HOME_MASK_LONG__%${WRTLAB_HOME_MASK_LONG}%g"
+  grep -R -l __WRTLAB_HOME_IF__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_HOME_IF__%${WRTLAB_HOME_IF}%g"               || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_HOME_IP__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_HOME_IP__%${WRTLAB_HOME_IP}%g"               || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_HOME_MASK_LONG__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_HOME_MASK_LONG__%${WRTLAB_HOME_MASK_LONG}%g" || [[ $? == 1 ]]
 
-  grep -R -l __WRTLAB_DMZ_IF__ 			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_DMZ_IF__%${WRTLAB_DMZ_IF}%g"
-  grep -R -l __WRTLAB_DMZ_IP__ 			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_DMZ_IP__%${WRTLAB_DMZ_IP}%g"
-  grep -R -l __WRTLAB_DMZ_MASK_LONG__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_DMZ_MASK_LONG__%${WRTLAB_DMZ_MASK_LONG}%g"
+  grep -R -l __WRTLAB_DMZ_IF__ 			"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_DMZ_IF__%${WRTLAB_DMZ_IF}%g"                 || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_DMZ_IP__ 			"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_DMZ_IP__%${WRTLAB_DMZ_IP}%g"                 || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_DMZ_MASK_LONG__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_DMZ_MASK_LONG__%${WRTLAB_DMZ_MASK_LONG}%g"   || [[ $? == 1 ]]
 
-  grep -R -l __WRTLAB_TEST_MNGT_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_MNGT_IP__%${WRTLAB_TEST_MNGT_IP}%g"
-  grep -R -l __WRTLAB_TEST_MNGT_MAC__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_MNGT_MAC__%${WRTLAB_TEST_MNGT_MAC}%g"
+  grep -R -l __WRTLAB_TEST_MNGT_IP__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_MNGT_IP__%${WRTLAB_TEST_MNGT_IP}%g"     || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_TEST_MNGT_MAC__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_MNGT_MAC__%${WRTLAB_TEST_MNGT_MAC}%g"   || [[ $? == 1 ]]
 
-  grep -R -l __WRTLAB_TEST_HOME_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_HOME_IP__%${WRTLAB_TEST_HOME_IP}%g"
-  grep -R -l __WRTLAB_TEST_HOME_MAC__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_HOME_MAC__%${WRTLAB_TEST_HOME_MAC}%g"
+  grep -R -l __WRTLAB_TEST_HOME_IP__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_HOME_IP__%${WRTLAB_TEST_HOME_IP}%g"     || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_TEST_HOME_MAC__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_HOME_MAC__%${WRTLAB_TEST_HOME_MAC}%g"   || [[ $? == 1 ]]
 
-  grep -R -l __WRTLAB_TEST_DMZ_IP__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_DMZ_IP__%${WRTLAB_TEST_DMZ_IP}%g"
-  grep -R -l __WRTLAB_TEST_DMZ_MAC__ 		"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_DMZ_MAC__%${WRTLAB_TEST_DMZ_MAC}%g"
+  grep -R -l __WRTLAB_TEST_DMZ_IP__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_DMZ_IP__%${WRTLAB_TEST_DMZ_IP}%g"       || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_TEST_DMZ_MAC__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_DMZ_MAC__%${WRTLAB_TEST_DMZ_MAC}%g"     || [[ $? == 1 ]]
 
 }
 

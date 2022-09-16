@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1004,1090
-set -o xtrace
+#set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
@@ -12,12 +12,66 @@ WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
 WRTLAB_PROXY_FEDORA_MAIN="http://fedora.mirrorservice.org/fedora"
 WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
 
-lint () {
-  find profile -type f -name 'bash_functions' -exec shellcheck run.sh {} \+
+WRTLAB_SCRIPTS=("run.sh" "builder/run.sh" "builder/bootstrap.sh")
+
+function env_create () {
+  pwd
+  mkdir -pv "tmp/${NAME}"
+}
+
+function env_remove () {
+  pwd
+  if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
+}
+
+function build_container () {
+  if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
+    env_create
+
+    cp -rv builder/ "tmp/${NAME}"
+    bake_vars
+    cd "tmp/${NAME}/builder/"
+    docker build -t "wrtlab:${WRTLAB_VERSION}" . >/dev/null
+    docker images "wrtlab:${WRTLAB_VERSION}"
+    cd ../../..
+
+    env_remove
+  fi
+}
+
+function bake_vars () {
+  #FYI https://unix.stackexchange.com/questions/330660/prevent-grep-from-exiting-in-case-of-nomatch
+  grep -R -l __NAME__ 				"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__NAME__%${NAME}%g"                                              || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_VERSION__			"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VERSION__%${WRTLAB_VERSION}%g"                          || [[ $? == 1 ]]
+
+  grep -R -l __WRTLAB_WAN_IF__ 			"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_IF__%${WRTLAB_WAN_IF}%g"                            || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_WAN_IP__                  "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_IP__%${WRTLAB_WAN_IP}%g"                            || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_WAN_MASK__                "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_MASK__%${WRTLAB_WAN_MASK}%g"                        || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_WAN_GW__                  "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_GW__%${WRTLAB_WAN_GW}%g"                            || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_WAN_DNS__                 "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_DNS__%${WRTLAB_WAN_DNS}%g"                          || [[ $? == 1 ]]
+
+  grep -R -l __WRTLAB_VPN_NET__                 "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VPN_NET__%${WRTLAB_VPN_NET}%g"                          || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_VPN_IP__                  "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VPN_IP__%${WRTLAB_VPN_IP}%g"                            || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_VPN_MASK_SHORT__          "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VPN_MASK_SHORT__%${WRTLAB_VPN_MASK_SHORT}%g"            || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_VPN_PORT__                "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s/__WRTLAB_VPN_PORT__/${WRTLAB_VPN_PORT}/g"                        || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_VPN_PORT_HIDDEN__         "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s/__WRTLAB_VPN_PORT_HIDDEN__/${WRTLAB_VPN_PORT_HIDDEN}/g"          || [[ $? == 1 ]]
+
+  grep -R -l __WRTLAB_TEST_VPN_IP__             "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_VPN_IP__%${WRTLAB_TEST_VPN_IP}%g"                  || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_TEST_VPN_GW__             "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_VPN_GW__%${WRTLAB_TEST_VPN_GW}%g"                  || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_TEST_VPN_NET__            "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_VPN_NET__%${WRTLAB_TEST_VPN_NET}%g"                || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_TEST_VPN_MASK_SHORT__     "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_VPN_MASK_SHORT__%${WRTLAB_TEST_VPN_MASK_SHORT}%g"  || [[ $? == 1 ]]
+
+  grep -R -l __WRTLAB_PROXY_ENABLED__           "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_PROXY_ENABLED__%${WRTLAB_PROXY_ENABLED}%g"              || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_PROXY_URL_DOCKER__        "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_PROXY_URL_DOCKER__%${WRTLAB_PROXY_URL_DOCKER}%g"        || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_PROXY_URL_LIBVIRT__       "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_PROXY_URL_LIBVIRT__%${WRTLAB_PROXY_URL_LIBVIRT}%g"      || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_PROXY_FEDORA_MAIN__       "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_PROXY_FEDORA_MAIN__%${WRTLAB_PROXY_FEDORA_MAIN}%g"      || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_PROXY_FEDORA_CODECS__     "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_PROXY_FEDORA_CODECS__%${WRTLAB_PROXY_FEDORA_CODECS}%g"  || [[ $? == 1 ]]
+  
+  bake_vars_specific
 } 
 
-system_check () {
-  UTILITES_LIST=("expect" "docker" "virsh" "virt-install")
+function check_system () {
+  UTILITES_LIST=("expect" "docker" "virsh" "virt-install" "qemu-img")
   for UTILITY in "${UTILITES_LIST[@]}"; do
     if ! command -v "${UTILITY}" > /dev/null; then echo "${UTILITY} check error"; return 1; fi
   done
@@ -28,73 +82,45 @@ system_check () {
   fi
 }
 
-function build () {
-  system_check
+function lint () {
+  find profile -type f -name 'bash_functions' -exec shellcheck "${WRTLAB_SCRIPTS[@]}" {} \+
+} 
 
-  #-------------------------------------------------
-  if [ ! -d tmp ]; then mkdir -v tmp; fi
-  if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
-  mkdir -v "tmp/${NAME}"
-  cp -v builder/Dockerfile "tmp/${NAME}/"
-  cp -v builder/bootstrap.sh "tmp/${NAME}/"
-  cp -rvT profile/common/ "tmp/${NAME}/"
-  cp -rvT "profile/${NAME}/" "tmp/${NAME}/"
+function build () {
+  build_container
+  env_create
+
+  cp -rv profile/common/files/ "tmp/${NAME}/"
+  cp -rv "profile/${NAME}/files/" "tmp/${NAME}/"
 
   mkdir -p "tmp/${NAME}/files/etc/dropbear/"
   cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
   chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
 
-  grep -R -l __NAME__ 				"tmp/${NAME}" | xargs sed -i "s%__NAME__%${NAME}%g"
-  grep -R -l __WRTLAB_VERSION__			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VERSION__%${WRTLAB_VERSION}%g"
-
-  grep -R -l __WRTLAB_WAN_IF__ 			"tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IF__%${WRTLAB_WAN_IF}%g"
-  grep -R -l __WRTLAB_WAN_IP__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_IP__%${WRTLAB_WAN_IP}%g"
-  grep -R -l __WRTLAB_WAN_MASK__                "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_MASK__%${WRTLAB_WAN_MASK}%g"
-  grep -R -l __WRTLAB_WAN_GW__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_GW__%${WRTLAB_WAN_GW}%g"
-  grep -R -l __WRTLAB_WAN_DNS__                 "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_WAN_DNS__%${WRTLAB_WAN_DNS}%g"
-
-  grep -R -l __WRTLAB_VPN_NET__                 "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VPN_NET__%${WRTLAB_VPN_NET}%g"
-  grep -R -l __WRTLAB_VPN_IP__                  "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VPN_IP__%${WRTLAB_VPN_IP}%g"
-  grep -R -l __WRTLAB_VPN_MASK_SHORT__          "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_VPN_MASK_SHORT__%${WRTLAB_VPN_MASK_SHORT}%g"
-  grep -R -l __WRTLAB_VPN_PORT__                "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT__/${WRTLAB_VPN_PORT}/g"
-  grep -R -l __WRTLAB_VPN_PORT_HIDDEN__         "tmp/${NAME}" | xargs sed -i "s/__WRTLAB_VPN_PORT_HIDDEN__/${WRTLAB_VPN_PORT_HIDDEN}/g"
-
-  grep -R -l __WRTLAB_TEST_VPN_IP__             "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_IP__%${WRTLAB_TEST_VPN_IP}%g"
-  grep -R -l __WRTLAB_TEST_VPN_GW__             "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_GW__%${WRTLAB_TEST_VPN_GW}%g"
-  grep -R -l __WRTLAB_TEST_VPN_NET__            "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_NET__%${WRTLAB_TEST_VPN_NET}%g"
-  grep -R -l __WRTLAB_TEST_VPN_MASK_SHORT__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_TEST_VPN_MASK_SHORT__%${WRTLAB_TEST_VPN_MASK_SHORT}%g"
-
-  grep -R -l __WRTLAB_PROXY_ENABLED__           "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_ENABLED__%${WRTLAB_PROXY_ENABLED}%g"
-  grep -R -l __WRTLAB_PROXY_URL_DOCKER__        "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_URL_DOCKER__%${WRTLAB_PROXY_URL_DOCKER}%g"
-  grep -R -l __WRTLAB_PROXY_URL_LIBVIRT__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_URL_LIBVIRT__%${WRTLAB_PROXY_URL_LIBVIRT}%g"
-  grep -R -l __WRTLAB_PROXY_FEDORA_MAIN__       "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_MAIN__%${WRTLAB_PROXY_FEDORA_MAIN}%g"
-  grep -R -l __WRTLAB_PROXY_FEDORA_CODECS__     "tmp/${NAME}" | xargs sed -i "s%__WRTLAB_PROXY_FEDORA_CODECS__%${WRTLAB_PROXY_FEDORA_CODECS}%g"
-
-  specific_build
-
-  #-------------------------------------------------
-  if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
-    cd "tmp/${NAME}/"
-    docker build -t "wrtlab:${WRTLAB_VERSION}" .
-    cd ../..
-  fi
-
-  rm -rfv img/*
+  bake_vars
 
   PACKAGES="cgi-io libiwinfo libiwinfo-data libiwinfo-lua liblua liblucihttp liblucihttp-lua libubus-lua lua luci luci-app-firewall luci-app-opkg luci-base luci-lib-base luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system luci-proto-ppp luci-ssl px5g-wolfssl rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns uhttpd uhttpd-mod-ubus luci-app-wireguard arp-scan arp-scan-database grub2 grub2-efi kmod-fs-vfat kmod-nls-base kmod-nls-cp437 kmod-nls-iso8859-1 kmod-nls-utf8 iperf3 openssh-client-utils"
   FILES="tmp/${NAME}"
 
-  docker run -it --rm -v "${PWD}:/opt:Z" \
-  --env "IMG_NAME=${NAME}" --env "IMG_VERSION=${WRTLAB_VERSION}" \
-  --env "IMG_FILES=${FILES}" --env "PACKAGES=${PACKAGES}" \
-  --env "IMG_PROXY_ENABLED=${WRTLAB_PROXY_ENABLED}" --env "IMG_PROXY_URL=${WRTLAB_PROXY_URL_DOCKER}" \
-  "wrtlab:${WRTLAB_VERSION}" bash -c '\
-    set -o nounset; set -o errexit; set -o xtrace;
-    if [ "${IMG_PROXY_ENABLED}" = true ]; then sed -i -e "s/https/http/" repositories.conf && echo "option http_proxy ${IMG_PROXY_URL}" >> repositories.conf && cat repositories.conf; fi && \
-    make -j4 image FILES="/opt/${IMG_FILES}/files" BIN_DIR="/opt/${IMG_FILES}/img" PACKAGES="$PACKAGES"; \
-    cd "/opt/${IMG_FILES}/img"; gzip -d "openwrt-${IMG_VERSION}-x86-64-generic-ext4-combined.img.gz" || true; \
-    qemu-img convert -f raw -O qcow2 "openwrt-${IMG_VERSION}-x86-64-generic-ext4-combined.img" "${IMG_NAME}.qcow2"'
-    #guestmount -a tmp/rr1router.qcow2 -i --rw mnt/
+  docker run -it --rm \
+  -v "${PWD}:/opt:Z" \
+  --env "IMG_NAME=${NAME}" \
+  --env "IMG_VERSION=${WRTLAB_VERSION}" \
+  --env "IMG_FILES=${FILES}" \
+  --env "IMG_PACKAGES=${PACKAGES}" \
+  --env "IMG_PROXY_ENABLED=${WRTLAB_PROXY_ENABLED}" \
+  --env "IMG_PROXY_URL=${WRTLAB_PROXY_URL_DOCKER}" \
+  "wrtlab:${WRTLAB_VERSION}" > /dev/null
+  ls -alhZ "tmp/${NAME}/img/openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz"
+
+  cd "tmp/${NAME}/img/"
+  gzip -d "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz" || true
+  qemu-img convert -f raw -O qcow2 "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img" "wrtlab-${NAME}-latest.qcow2"
+  cp -v "wrtlab-${NAME}-latest.qcow2" "${LIBVIRT_DIR_POOL_PATH}"
+  ls -alhZ "${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-latest.qcow2"
+  cd ../../..
+
+  env_remove
 }
 
 function virtnet_setup () {
@@ -154,7 +180,6 @@ function remove_vm () {
     fi
     virsh undefine "${NAME}"
   fi
-
 }
 
 function net_deploy () {

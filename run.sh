@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1004
-set -o xtrace
+#set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
@@ -14,9 +14,11 @@ WRTLAB_PROXY_ENABLED="true"
 source profile/common/bash_functions
 
 main () {
+  check_system
   lint
+  env_remove
   build
-  test
+  #test
 }
 
 main "$@"

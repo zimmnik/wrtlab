@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1004,2034
-set -o xtrace
+#set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit

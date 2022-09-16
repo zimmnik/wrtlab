@@ -40,3 +40,5 @@ sha256sum --ignore-missing -c sha256sums
 
 tar -vxJf openwrt-imagebuilder-__WRTLAB_VERSION__-x86-64.Linux-x86_64.tar.xz
 ln -s openwrt-imagebuilder-__WRTLAB_VERSION__-x86-64.Linux-x86_64 builder
+
+mv /tmp/run.sh builder/
