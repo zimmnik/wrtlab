@@ -1,0 +1,17 @@
+<network>
+  <name>moswrt-wan-test</name>
+  <forward mode="nat"/>
+  <bridge name="virbr102" stp="off"/>
+  <ip address='192.168.102.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.102.2' end='192.168.102.254'/>
+      <host mac="00:16:3e:3a:a9:1a" name="wrtlab-moswrt-test.local" ip="192.168.102.254"/> 
+    </dhcp>
+  </ip>
+  <domain name="local" localOnly='yes'/>
+  <dns>
+    <host ip='192.168.102.1'>
+      <hostname>probook.local</hostname>
+    </host>
+  </dns>
+</network>

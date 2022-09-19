@@ -14,11 +14,11 @@ WRTLAB_PROXY_ENABLED="true"
 source profile/common/bash_functions
 
 main () {
-  check_system
+  #check_system
   lint
-  env_remove
+  clean
   build
-  #test
+  test
 }
 
 main "$@"

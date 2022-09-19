@@ -1,0 +1,4 @@
+<network>
+  <name>moswrt-dmz-test</name>
+  <bridge name="virbr103" stp="off"/>
+</network>

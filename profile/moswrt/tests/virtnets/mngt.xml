@@ -1,0 +1,4 @@
+<network>
+  <name>moswrt-mngt-test</name>
+  <bridge name="virbr101" stp="off"/>
+</network>

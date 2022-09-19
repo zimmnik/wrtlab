@@ -1,6 +1,6 @@
 #!/bin/bash
-# shellcheck disable=SC1004,1090
-#set -o xtrace
+# shellcheck disable=SC1004,1090,2034
+set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
@@ -14,28 +14,77 @@ WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
 
 WRTLAB_SCRIPTS=("run.sh" "builder/run.sh" "builder/bootstrap.sh")
 
-function env_create () {
+WRTLAB_REF_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-ref.qcow2"
+WRTLAB_TEST_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-test.qcow2"
+WRTLAB_PROD_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-prod.qcow2"
+
+function create_env () {
   pwd
   mkdir -pv "tmp/${NAME}"
 }
 
-function env_remove () {
+function clean () {
+  remove_vm "${NAME}"
+  remove_virtnets
+  remove_env
+}
+
+function remove_env () {
   pwd
   if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
 }
 
+function remove_vms () {
+  :
+}
+
+function remove_virtnets () {
+#FYI https://stackoverflow.com/questions/16414410/delete-empty-lines-using-sed
+  if virsh net-list --name | grep "${NAME}" &> /dev/null ; then
+    while read -r NET_NAME; do
+      if virsh net-info --network "${NET_NAME}" | grep "Persistent:     yes"; then
+        virsh net-destroy "${NET_NAME}" | grep .
+        virsh net-undefine "${NET_NAME}" | grep .
+      else
+        virsh net-destroy "${NET_NAME}" | grep .
+      fi
+    done < <(virsh net-list --name | grep "${NAME}")
+  fi
+}
+
+function remove_vm () {
+  local NAME=$1
+  local OPTIONS
+
+  if virsh dominfo "${NAME}" &> /dev/null; then
+    if virsh dominfo "${NAME}" | grep -q "State:          running"; then
+      virsh destroy "${NAME}"
+    fi
+    if virsh domblklist --details moswrt | grep disk > /dev/null; then
+       local DISKS=""
+       while read -r line; do
+         DISKS+=",$line"
+       done < <(virsh domblklist --details "${NAME}" | grep disk | awk '{print $3}')
+       OPTIONS=("--storage" "${DISKS:1}")
+    fi
+    virsh undefine "${OPTIONS[@]}" "${NAME}"
+    virsh list --all
+  fi
+}
+
 function build_container () {
   if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
-    env_create
+    create_env
 
     cp -rv builder/ "tmp/${NAME}"
     bake_vars
     cd "tmp/${NAME}/builder/"
-    docker build -t "wrtlab:${WRTLAB_VERSION}" . >/dev/null
+    #docker build -t "wrtlab:${WRTLAB_VERSION}" . >/dev/null
+    docker build -t "wrtlab:${WRTLAB_VERSION}" .
     docker images "wrtlab:${WRTLAB_VERSION}"
     cd ../../..
 
-    env_remove
+    remove_env
   fi
 }
 
@@ -88,7 +137,7 @@ function lint () {
 
 function build () {
   build_container
-  env_create
+  create_env
 
   cp -rv profile/common/files/ "tmp/${NAME}/"
   cp -rv "profile/${NAME}/files/" "tmp/${NAME}/"
@@ -116,94 +165,77 @@ function build () {
   cd "tmp/${NAME}/img/"
   gzip -d "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz" || true
   qemu-img convert -f raw -O qcow2 "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img" "wrtlab-${NAME}-latest.qcow2"
-  cp -v "wrtlab-${NAME}-latest.qcow2" "${LIBVIRT_DIR_POOL_PATH}"
-  ls -alhZ "${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-latest.qcow2"
-  cd ../../..
 
-  env_remove
-}
-
-function virtnet_setup () {
-  #-------------------------------------------------
-  if [ "${WRTLAB_VIRT_NETWORKS_ENABLED}" = true ]; then
-    if ! virsh net-info default | grep -q "Active:         yes"; then
-      virsh net-start default
-    fi
-
-    if ! virsh net-dumpxml default | grep -q "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>"; then
-      if virsh net-dumpxml default | grep -q "host mac='$WRTLAB_WAN_MAC'"; then
-        virsh net-update default modify ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
-      else
-        virsh net-update default add-last ip-dhcp-host "<host mac='$WRTLAB_WAN_MAC' ip='$WRTLAB_WAN_IP'/>" --live --config --parent-index 0
-      fi
-    fi
-    specific_virtnet_setup  
+  if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
+    mkdir -p "$LIBVIRT_DIR_POOL_PATH"
   fi
+
+  cp -v "wrtlab-${NAME}-latest.qcow2" "${WRTLAB_REF_IMAGE}"
+  #chown "qemu:qemu" "${LATEST_IMAGE}"
+  #chmod g+rwx "${LATEST_IMAGE}"
+  ls -alhZ "wrtlab-${NAME}-latest.qcow2" "${WRTLAB_REF_IMAGE}"
+
+  cd ../../..
+  remove_env
 }
 
 function test () {
-  remove_vm "${NAME}"
-  virtnet_setup
-  run_openwrt
+  create_env
 
-  # default test
-  profile/common/tests/router_internal_test.exp "${NAME}"
+  cp -rv profile/common/tests/ "tmp/${NAME}/"
+  cp -rv "profile/${NAME}/tests/" "tmp/${NAME}/"
 
-  # specific test
-  specific_test  
+  bake_vars
+  cd "tmp/${NAME}/tests/virtnets"
+  create_virtnets
+  cd ../../../../
+
+  cp -v "${WRTLAB_REF_IMAGE}" "${WRTLAB_TEST_IMAGE}"
+  #run_openwrt
+
+  ## default test
+  #profile/common/tests/router_internal_test.exp "${NAME}"
+  ## specific test
+  #specific_test  
 }
+
+function create_virtnets () {
+  if compgen -G "*.xml" > /dev/null; then
+    local NET_NAME
+    for FILE in *.xml; do
+      #NET_NAME=$(xmllint --xpath 'string(/network/name)' "${FILE}")
+      virsh net-create --file "${FILE}" --validate | grep .
+    done
+  fi
+}
+
 
 function run_openwrt () {
-  if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
-    mkdir "$LIBVIRT_DIR_POOL_PATH" || true
-    chown "${USER}:qemu" "$LIBVIRT_DIR_POOL_PATH"
-    chmod g+rws "$LIBVIRT_DIR_POOL_PATH"
-  fi
-  cp -fv "tmp/${NAME}/img/${NAME}.qcow2" "$LIBVIRT_DIR_POOL_PATH"
-  
   #osinfo-query os
-  virt-install -n "${NAME}" --install no_install=yes \
+  virt-install -n "${NAME}" \
+   --install no_install=yes \
+   --osinfo linux2020 \
    --vcpus 1 --ram 128 --video none --graphics none  \
-   --osinfo linux2020 --disk path="${LIBVIRT_DIR_POOL_PATH}/${NAME}.qcow2" \
-   "${WRTLAB_WAN_NETWORKS[@]}" \
-   "${WRTLAB_LOCAL_NETWORKS[@]}" \
+   --disk path="${WRTLAB_DISK}" \
+   "${WRTLAB_NETWORKS[@]}" \
    --noautoconsole
 
-  #virsh autostart "${NAME}"
-}
+  virt-install -n "${NAME}_testvpn" \
+   --install no_install=no \
+   --osinfo linux2020 \
+   --vcpus 1 --ram 2048 --video none --graphics none \
+   --disk none --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
+   --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-36-1-5 rd.live.image systemd.unit=multi-user.target" \
+   "${WRTLAB_TEST_VPN_EXT_NETWORKS[@]}" \
+   --noautoconsole
 
-function remove_vm () {
-  local NAME=$1
-  if virsh dominfo "${NAME}" &> /dev/null; then
-    if virsh dominfo "${NAME}" | grep -q "State:          running"; then
-      virsh destroy "${NAME}"
-    fi
-    virsh undefine "${NAME}"
-  fi
-}
-
-function net_deploy () {
-  local NET_NAME=$1
-  local HOST_IP=$2
-  local NET_MASK=$3
-
-  if virsh net-info "${NET_NAME}"; then
-    if virsh net-info "${NET_NAME}" | grep -q "Active:         yes"; then
-      virsh net-destroy "${NET_NAME}"
-    fi
-    virsh net-undefine "${NET_NAME}"
-  fi
-
-  virsh net-define <(cat << EOF
-<network>
-  <name>${NET_NAME}</name>
-  <bridge stp='off'/>
-  <ip address='${HOST_IP}' netmask='${NET_MASK}'>
-  </ip>
-</network>
-EOF
-)
-  virsh net-start "${NET_NAME}"
+  virt-install -n "${VM}" \
+   --install no_install=yes \
+   --osinfo alpinelinux3.14 \
+   --vcpus 1 --ram 256 --video none --graphics none \
+   --disk device=cdrom,path="${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" \
+   --network "network=${NET},mac=${MAC}" \
+   --noautoconsole
 }
 
 function run_alpine315_test () {
