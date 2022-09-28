@@ -12,6 +12,8 @@ uci -q batch << EOI
 	set dropbear.@dropbear[0].PasswordAuth='off'
 	#Allow root logins with password
 	set dropbear.@dropbear[0].RootPasswordAuth='off'
+#System - Administration - HTTPS Access
+	set uhttpd.main.redirect_https='on'
 #Network - Interfaces - Interfaces
 	# Remove WAN6
 	delete network.wan6
