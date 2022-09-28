@@ -218,5 +218,13 @@ uci -q batch << EOI
 	set firewall.@redirect[-1].src_dport='54321'
 	set firewall.@redirect[-1].dest_ip='192.168.3.64'
 	set firewall.@redirect[-1].dest_port='54321'
+#Network - Firewall - Traffic rules
+	add firewall rule
+	set firewall.@rule[-1].name='Allow-Wireguard'
+	set firewall.@rule[-1].family='ipv4'
+	add_list firewall.@rule[-1].proto='udp'
+	set firewall.@rule[-1].src='*'
+	set firewall.@rule[-1].dest_port='5151'
+	set firewall.@rule[-1].target='ACCEPT'
 EOI
 uci commit
