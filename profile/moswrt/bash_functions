@@ -15,8 +15,7 @@ WRTLAB_WAN_MAC="52:54:00:55:02:00"
 WRTLAB_MNGT_IF="eth1"
 WRTLAB_MNGT_IP="192.168.1.254"
 WRTLAB_MNGT_MASK_LONG="255.255.255.0"
-WRTLAB_MNGT_NAME="${NAME}_mngt"
-WRTLAB_MNGT_IP_HOST="192.168.1.253"
+WRTLAB_MNGT_NAME="${NAME}_mngt" WRTLAB_MNGT_IP_HOST="192.168.1.253"
 
 WRTLAB_HOME_IF="eth2"
 WRTLAB_HOME_IP="192.168.4.254"
@@ -51,11 +50,8 @@ WRTLAB_TEST_HOME_MAC="52:54:00:55:02:03"
 WRTLAB_TEST_DMZ_IP="192.168.3.252"
 WRTLAB_TEST_DMZ_MAC="52:54:00:55:02:04"
 
-WRTLAB_WAN_NETWORKS=(--network "network=default,mac=${WRTLAB_WAN_MAC}")
-WRTLAB_LOCAL_NETWORKS=(--network "network=${WRTLAB_MNGT_NAME}" --network "network=${WRTLAB_HOME_NAME}" --network "network=${WRTLAB_DMZ_NAME}")
-WRTLAB_TEST_VPN_EXT_NETWORKS=(--network "network=default,mac=${WRTLAB_TEST_VPN_EXT_MAC}")
-#export WRTLAB_LOCAL_NETWORKS=(--network "network=default,mac=${WRTLAB_WAN_MAC}")
-#export NET_INET="type=direct,source=eno1,source_mode=bridge"
+WRTLAB_TEST_NETWORKS=(--network "network=wrtlab-${NAME}-test-wan,mac=${WRTLAB_WAN_MAC}" --network "network=wrtlab-${NAME}-test-mngt" --network "network=wrtlab-${NAME}-test-home" --network "network=wrtlab-${NAME}-test-dmz" --check mac_in_use=off)
+WRTLAB_PROD_NETWORKS=(--network "type=direct,source=eno1.2,source_mode=bridge,mac=${WRTLAB_WAN_MAC}" --network "type=direct,source=eno1.1,source_mode=bridge" --network "type=direct,source=eno1.4,source_mode=bridge" --network "type=direct,source=eno1.3,source_mode=bridge")
 
 function bake_vars_specific () {
   #FYI https://unix.stackexchange.com/questions/330660/prevent-grep-from-exiting-in-case-of-nomatch
@@ -82,38 +78,29 @@ function bake_vars_specific () {
   grep -R -l __WRTLAB_TEST_DMZ_MAC__ 		"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_TEST_DMZ_MAC__%${WRTLAB_TEST_DMZ_MAC}%g"     || [[ $? == 1 ]]
 }
 
-function create_virtnet_specific () {
-  net_deploy "${WRTLAB_MNGT_NAME}" "${WRTLAB_MNGT_IP_HOST}" "${WRTLAB_MNGT_MASK_LONG}"
-  net_deploy "${WRTLAB_HOME_NAME}" "${WRTLAB_HOME_IP_HOST}" "${WRTLAB_HOME_MASK_LONG}"
-  net_deploy "${WRTLAB_DMZ_NAME}"  "${WRTLAB_DMZ_IP_HOST}"  "${WRTLAB_DMZ_MASK_LONG}"
-}
+function create_venv_specific () {
 
-function specific_test () {
-  remove_vm "${NAME}_testvpn"
-  remove_vm "${NAME}_testmngt"
-  remove_vm "${NAME}_testhome"
-  remove_vm "${NAME}_testdmz"
+ if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" ]; then
+   WRTLAB_PATH="$PWD"
+   mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"
+   curl -LO https://download.fedoraproject.org/pub/fedora/linux/releases/36/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-36-1.5.iso
+   curl -LO https://download.fedoraproject.org/pub/fedora/linux/releases/36/Workstation/x86_64/iso/Fedora-Workstation-36-1.5-x86_64-CHECKSUM
+   sha256sum --ignore-missing -c Fedora-Workstation-36-1.5-x86_64-CHECKSUM
+   rm -v Fedora-Workstation-36-1.5-x86_64-CHECKSUM
+   cd "$WRTLAB_PATH"
+ fi
 
-  if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" ]; then
-    WRTLAB_PATH="$PWD"
-    mkdir "$LIBVIRT_DIR_POOL_PATH" || true && cd "$LIBVIRT_DIR_POOL_PATH"
-    curl -LO https://download.fedoraproject.org/pub/fedora/linux/releases/36/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-36-1.5.iso
-    curl -LO https://download.fedoraproject.org/pub/fedora/linux/releases/36/Workstation/x86_64/iso/Fedora-Workstation-36-1.5-x86_64-CHECKSUM
-    sha256sum --ignore-missing -c Fedora-Workstation-36-1.5-x86_64-CHECKSUM
-    rm -v Fedora-Workstation-36-1.5-x86_64-CHECKSUM
-    cd "$WRTLAB_PATH"
-  fi
+ echo "Domain: wrtlab-${NAME}-test-vpn"
+ virt-install -n "wrtlab-${NAME}-test-vpn"  \
+ --osinfo linux2020 \
+ --vcpus 1 --ram 2048 --video none --graphics none  \
+ --boot=cdrom --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
+ --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-36-1-5 rd.live.image systemd.unit=multi-user.target" \
+ --network "network=wrtlab-${NAME}-test-wan" \
+ --noautoconsole | grep . | tail -1
+ "tmp/${NAME}/tests/setup-vpn.exp" "wrtlab-${NAME}-test-vpn" | grep . | tail -1
 
-  remove_vm "${NAME}_testvpn"
-  virt-install -n "${NAME}_testvpn" --install no_install=no \
-   --vcpus 1 --ram 2048 --video none --graphics none \
-   --osinfo linux2020 --disk none --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
-   --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-36-1-5 rd.live.image systemd.unit=multi-user.target" \
-   "${WRTLAB_TEST_VPN_EXT_NETWORKS[@]}" \
-   --noautoconsole
-  "tmp/${NAME}/tests/router_external_test_vpn.exp" "${NAME}_testvpn"
-
-  run_alpine315_test "${NAME}_testmngt" testmngt "${WRTLAB_MNGT_NAME}" "${WRTLAB_TEST_MNGT_MAC}"
-  run_alpine315_test "${NAME}_testdmz"  testdmz  "${WRTLAB_DMZ_NAME}"  "${WRTLAB_TEST_DMZ_MAC}"
-  run_alpine315_test "${NAME}_testhome" testhome "${WRTLAB_HOME_NAME}" "${WRTLAB_TEST_HOME_MAC}"
+ run_alpine315_test "wrtlab-${NAME}-test-mngt" setup-mngt.exp "wrtlab-${NAME}-test-mngt" "${WRTLAB_TEST_MNGT_MAC}"
+ run_alpine315_test "wrtlab-${NAME}-test-dmz" setup-dmz.exp "wrtlab-${NAME}-test-dmz" "${WRTLAB_TEST_DMZ_MAC}"
+ run_alpine315_test "wrtlab-${NAME}-test-home" setup-home.exp "wrtlab-${NAME}-test-home" "${WRTLAB_TEST_HOME_MAC}"
 }

@@ -1,0 +1,40 @@
+#!/usr/bin/expect -f
+#FYI https://pantz.org/software/expect/expect_examples_and_tips.html
+
+set name [lindex $argv 0]
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname virsh_domain_name\n"
+  exit 1
+}
+
+log_user 1
+
+set send_slow {1 .1}
+proc send {ignore arg} {
+        sleep .2
+        exp_send -s -- $arg
+}
+
+send_user "\nrouter setup started\n\n"
+
+#spawn virsh reset $name
+spawn virsh console $name
+
+send -- "\r"
+set prompt "(%|#|\\$) $"
+set timeout 30
+expect {
+  "Please press Enter to activate this console" {
+    sleep 3
+    send -- "\r"
+    expect {
+      -re $prompt {}
+      default { send_user "FAIL: console error\n"; exit 1 }
+    }
+  }
+  -re $prompt { send -- "\r" }
+  default { send_user "FAIL: console error\n"; exit 1 }
+}
+
+send_user "\nrouter setup completed successfully\n\n"
+close

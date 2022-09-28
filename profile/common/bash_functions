@@ -7,7 +7,7 @@ set -o errexit
 
 source "profile/${NAME}/bash_functions"
 
-WRTLAB_PROXY_URL_LIBVIRT="http://${WRTLAB_WAN_GW}:3128"
+WRTLAB_PROXY_URL_LIBVIRT="http://${HOSTNAME}:3128"
 WRTLAB_PROXY_URL_DOCKER="http://${HOSTNAME}:3128"
 WRTLAB_PROXY_FEDORA_MAIN="http://fedora.mirrorservice.org/fedora"
 WRTLAB_PROXY_FEDORA_CODECS="http://codecs.fedoraproject.org/openh264"
@@ -17,79 +17,50 @@ WRTLAB_SCRIPTS=("run.sh" "builder/run.sh" "builder/bootstrap.sh")
 WRTLAB_REF_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-ref.qcow2"
 WRTLAB_TEST_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-test.qcow2"
 WRTLAB_PROD_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-prod.qcow2"
+WRTLAB_PREV_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-prod-prev.qcow2"
 
-function create_env () {
-  pwd
-  mkdir -pv "tmp/${NAME}"
+function check_system () {
+  UTILITES_LIST=("expect" "docker" "virsh" "virt-install" "qemu-img")
+  for UTILITY in "${UTILITES_LIST[@]}"; do
+    if ! command -v "${UTILITY}" > /dev/null; then echo "${UTILITY} check error"; return 1; fi
+  done
+
+  if [ "${WRTLAB_PROXY_ENABLED}" = true ]; then
+    curl -L http://downloads.openwrt.org/snapshots/targets/x86/64/version.buildinfo -s -o /dev/null -x "${WRTLAB_PROXY_URL_DOCKER}"
+    curl -L http://downloads.openwrt.org/snapshots/targets/x86/64/version.buildinfo -s -o /dev/null -x "${WRTLAB_PROXY_URL_LIBVIRT}"
+  fi
 }
+
+function lint () {
+  find profile -type f -name 'bash_functions' -exec shellcheck "${WRTLAB_SCRIPTS[@]}" {} \+
+} 
 
 function clean () {
-  remove_vm "${NAME}"
-  remove_virtnets
-  remove_env
+  echo "Cleaning ..."
+  remove_venv
+  remove_profile
 }
 
-function remove_env () {
-  pwd
-  if [ -d "tmp/${NAME}" ]; then rm -rv "tmp/${NAME}"; fi
+function create_profile () {
+  mkdir -p "tmp/${NAME}"
+  cp -r builder/ "tmp/${NAME}/"
+  cp -r profile/common/. "tmp/${NAME}/"
+  cp -r "profile/${NAME}/." "tmp/${NAME}/"
+
+  mkdir "tmp/${NAME}/files/etc/dropbear/"
+  cp  ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
+  chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
+
+  bake_vars
 }
 
-function remove_vms () {
-  :
-}
-
-function remove_virtnets () {
-#FYI https://stackoverflow.com/questions/16414410/delete-empty-lines-using-sed
-  if virsh net-list --name | grep "${NAME}" &> /dev/null ; then
-    while read -r NET_NAME; do
-      if virsh net-info --network "${NET_NAME}" | grep "Persistent:     yes"; then
-        virsh net-destroy "${NET_NAME}" | grep .
-        virsh net-undefine "${NET_NAME}" | grep .
-      else
-        virsh net-destroy "${NET_NAME}" | grep .
-      fi
-    done < <(virsh net-list --name | grep "${NAME}")
-  fi
-}
-
-function remove_vm () {
-  local NAME=$1
-  local OPTIONS
-
-  if virsh dominfo "${NAME}" &> /dev/null; then
-    if virsh dominfo "${NAME}" | grep -q "State:          running"; then
-      virsh destroy "${NAME}"
-    fi
-    if virsh domblklist --details moswrt | grep disk > /dev/null; then
-       local DISKS=""
-       while read -r line; do
-         DISKS+=",$line"
-       done < <(virsh domblklist --details "${NAME}" | grep disk | awk '{print $3}')
-       OPTIONS=("--storage" "${DISKS:1}")
-    fi
-    virsh undefine "${OPTIONS[@]}" "${NAME}"
-    virsh list --all
-  fi
-}
-
-function build_container () {
-  if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
-    create_env
-
-    cp -rv builder/ "tmp/${NAME}"
-    bake_vars
-    cd "tmp/${NAME}/builder/"
-    #docker build -t "wrtlab:${WRTLAB_VERSION}" . >/dev/null
-    docker build -t "wrtlab:${WRTLAB_VERSION}" .
-    docker images "wrtlab:${WRTLAB_VERSION}"
-    cd ../../..
-
-    remove_env
-  fi
+function remove_profile () {
+  if [ -d "tmp/${NAME}" ]; then rm -rf "tmp/${NAME}"; fi
 }
 
 function bake_vars () {
   #FYI https://unix.stackexchange.com/questions/330660/prevent-grep-from-exiting-in-case-of-nomatch
+  grep -R -l __HOSTNAME__ 			"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__HOSTNAME__%${HOSTNAME}%g"                                      || [[ $? == 1 ]]
   grep -R -l __NAME__ 				"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__NAME__%${NAME}%g"                                              || [[ $? == 1 ]]
   grep -R -l __WRTLAB_VERSION__			"tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VERSION__%${WRTLAB_VERSION}%g"                          || [[ $? == 1 ]]
 
@@ -98,6 +69,7 @@ function bake_vars () {
   grep -R -l __WRTLAB_WAN_MASK__                "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_MASK__%${WRTLAB_WAN_MASK}%g"                        || [[ $? == 1 ]]
   grep -R -l __WRTLAB_WAN_GW__                  "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_GW__%${WRTLAB_WAN_GW}%g"                            || [[ $? == 1 ]]
   grep -R -l __WRTLAB_WAN_DNS__                 "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_DNS__%${WRTLAB_WAN_DNS}%g"                          || [[ $? == 1 ]]
+  grep -R -l __WRTLAB_WAN_MAC__                 "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_WAN_MAC__%${WRTLAB_WAN_MAC}%g"                          || [[ $? == 1 ]]
 
   grep -R -l __WRTLAB_VPN_NET__                 "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VPN_NET__%${WRTLAB_VPN_NET}%g"                          || [[ $? == 1 ]]
   grep -R -l __WRTLAB_VPN_IP__                  "tmp/${NAME}" | xargs --no-run-if-empty sed -i "s%__WRTLAB_VPN_IP__%${WRTLAB_VPN_IP}%g"                            || [[ $? == 1 ]]
@@ -119,34 +91,10 @@ function bake_vars () {
   bake_vars_specific
 } 
 
-function check_system () {
-  UTILITES_LIST=("expect" "docker" "virsh" "virt-install" "qemu-img")
-  for UTILITY in "${UTILITES_LIST[@]}"; do
-    if ! command -v "${UTILITY}" > /dev/null; then echo "${UTILITY} check error"; return 1; fi
-  done
-
-  if [ "${WRTLAB_PROXY_ENABLED}" = true ]; then
-    curl -L http://downloads.openwrt.org/snapshots/targets/x86/64/version.buildinfo -s -o /dev/null -x "${WRTLAB_PROXY_URL_DOCKER}"
-    curl -L http://downloads.openwrt.org/snapshots/targets/x86/64/version.buildinfo -s -o /dev/null -x "${WRTLAB_PROXY_URL_LIBVIRT}"
-  fi
-}
-
-function lint () {
-  find profile -type f -name 'bash_functions' -exec shellcheck "${WRTLAB_SCRIPTS[@]}" {} \+
-} 
-
 function build () {
+  echo "Building ..."
+  create_profile
   build_container
-  create_env
-
-  cp -rv profile/common/files/ "tmp/${NAME}/"
-  cp -rv "profile/${NAME}/files/" "tmp/${NAME}/"
-
-  mkdir -p "tmp/${NAME}/files/etc/dropbear/"
-  cp -v ~/.ssh/authorized_keys "tmp/${NAME}/files/etc/dropbear/"
-  chmod og-rwx "tmp/${NAME}/files/etc/dropbear/"
-
-  bake_vars
 
   PACKAGES="cgi-io libiwinfo libiwinfo-data libiwinfo-lua liblua liblucihttp liblucihttp-lua libubus-lua lua luci luci-app-firewall luci-app-opkg luci-base luci-lib-base luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system luci-proto-ppp luci-ssl px5g-wolfssl rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns uhttpd uhttpd-mod-ubus luci-app-wireguard arp-scan arp-scan-database grub2 grub2-efi kmod-fs-vfat kmod-nls-base kmod-nls-cp437 kmod-nls-iso8859-1 kmod-nls-utf8 iperf3 openssh-client-utils"
   FILES="tmp/${NAME}"
@@ -169,80 +117,134 @@ function build () {
   if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
     mkdir -p "$LIBVIRT_DIR_POOL_PATH"
   fi
-
+  
   cp -v "wrtlab-${NAME}-latest.qcow2" "${WRTLAB_REF_IMAGE}"
   #chown "qemu:qemu" "${LATEST_IMAGE}"
   #chmod g+rwx "${LATEST_IMAGE}"
-  ls -alhZ "wrtlab-${NAME}-latest.qcow2" "${WRTLAB_REF_IMAGE}"
-
+  ls -alhZ "${WRTLAB_REF_IMAGE}"
   cd ../../..
-  remove_env
+
+  remove_profile
 }
 
-function test () {
-  create_env
-
-  cp -rv profile/common/tests/ "tmp/${NAME}/"
-  cp -rv "profile/${NAME}/tests/" "tmp/${NAME}/"
-
-  bake_vars
-  cd "tmp/${NAME}/tests/virtnets"
-  create_virtnets
-  cd ../../../../
-
-  cp -v "${WRTLAB_REF_IMAGE}" "${WRTLAB_TEST_IMAGE}"
-  #run_openwrt
-
-  ## default test
-  #profile/common/tests/router_internal_test.exp "${NAME}"
-  ## specific test
-  #specific_test  
-}
-
-function create_virtnets () {
-  if compgen -G "*.xml" > /dev/null; then
-    local NET_NAME
-    for FILE in *.xml; do
-      #NET_NAME=$(xmllint --xpath 'string(/network/name)' "${FILE}")
-      virsh net-create --file "${FILE}" --validate | grep .
-    done
+function build_container () {
+  if ! docker inspect --type=image "wrtlab:${WRTLAB_VERSION}" > /dev/null; then
+    cd "tmp/${NAME}/builder/"
+    docker build -t "wrtlab:${WRTLAB_VERSION}" . >/dev/null
+    docker images "wrtlab:${WRTLAB_VERSION}"
+    cd ../../..
   fi
 }
 
+function test () {
+  echo "Testing ..."
+  create_profile
+  create_venv
+  "tmp/${NAME}/tests/test-router.exp" "wrtlab-${NAME}-test-main" | grep . | tail -1
+  "tmp/${NAME}/tests/test-vpn.exp" "wrtlab-${NAME}-test-vpn"     | grep . | tail -1
+  "tmp/${NAME}/tests/test-mngt.exp" "wrtlab-${NAME}-test-mngt"   | grep . | tail -1
+  "tmp/${NAME}/tests/test-dmz.exp" "wrtlab-${NAME}-test-dmz"     | grep . | tail -1
+  "tmp/${NAME}/tests/test-home.exp" "wrtlab-${NAME}-test-home"   | grep . | tail -1
+  clean
+}
+
+function create_virtnets () {
+  if [ -d "tmp/${NAME}/tests" ]; then 
+    cd "tmp/${NAME}/tests"
+    if compgen -G "*.xml" > /dev/null; then
+      local NET_NAME
+      for FILE in *.xml; do
+        NET_NAME=$(xmllint --xpath 'string(/network/name)' "${FILE}")
+        virsh net-define --file "${FILE}" --validate | grep .
+        virsh net-start "$NET_NAME" | grep .
+      done
+    fi
+    cd ../../..
+  fi
+}
+
+function remove_virtnets () {
+#FYI https://stackoverflow.com/questions/16414410/delete-empty-lines-using-sed
+  while read -r NET_NAME; do
+    virsh net-destroy "${NET_NAME}" | grep .
+  done < <(virsh net-list --name | grep "wrtlab-${NAME}-test")
+
+  while read -r NET_NAME; do
+    virsh net-undefine "${NET_NAME}" | grep .
+  done < <(virsh net-list --name --all | grep "wrtlab-${NAME}-test")
+}
+
+function deploy () {
+  echo "Deploy ..."
+  rm "${WRTLAB_PREV_IMAGE}" || true
+  cp "${WRTLAB_PROD_IMAGE}" "${WRTLAB_PREV_IMAGE}"
+  remove_vm "wrtlab-${NAME}-prod-main"
+  cp -v "${WRTLAB_REF_IMAGE}" "${WRTLAB_PROD_IMAGE}"
+  run_openwrt "wrtlab-${NAME}-prod-main" "${WRTLAB_PROD_IMAGE}" "${WRTLAB_PROD_NETWORKS[@]}"
+}
+
+
+function create_venv () {
+  create_virtnets
+
+  cp -v "${WRTLAB_REF_IMAGE}" "${WRTLAB_TEST_IMAGE}"
+  run_openwrt "wrtlab-${NAME}-test-main" "${WRTLAB_TEST_IMAGE}" "${WRTLAB_TEST_NETWORKS[@]}"
+  "tmp/${NAME}/tests/setup-router.exp" "wrtlab-${NAME}-test-main" | grep . | tail -1
+
+  create_venv_specific
+}
+
+function remove_venv () {
+  if virsh list --name --all | grep "wrtlab-${NAME}-test" &> /dev/null ; then
+    while read -r VM_NAME; do
+      remove_vm "${VM_NAME}"
+    done < <(virsh list --name --all | grep "wrtlab-${NAME}-test")
+  fi
+  remove_virtnets
+}
+
+function remove_vm () {
+  local NAME=$1
+  local OPTIONS
+
+  if virsh dominfo "${NAME}" | grep -q "State:          running"; then
+    virsh destroy "${NAME}" | grep .
+  fi
+
+  if virsh dominfo "${NAME}" &> /dev/null; then
+    if virsh domblklist --details moswrt | grep disk > /dev/null; then
+       local DISKS=""
+       while read -r line; do
+         DISKS+=",$line"
+       done < <(virsh domblklist --details "${NAME}" | grep disk | awk '{print $3}')
+       OPTIONS=("--storage" "${DISKS:1}")
+    fi
+    virsh undefine "${OPTIONS[@]}" "${NAME}" | grep .
+  fi
+}
 
 function run_openwrt () {
+  #FYI https://stackoverflow.com/questions/1063347/passing-arrays-as-parameters-in-bash/70855715#70855715
+  local OPENWRT_NAME=$1
+  local OPENWRT_DISK=$2
+  local OPENWRT_NET=("${@:3}")
+
   #osinfo-query os
-  virt-install -n "${NAME}" \
-   --install no_install=yes \
-   --osinfo linux2020 \
-   --vcpus 1 --ram 128 --video none --graphics none  \
-   --disk path="${WRTLAB_DISK}" \
-   "${WRTLAB_NETWORKS[@]}" \
-   --noautoconsole
-
-  virt-install -n "${NAME}_testvpn" \
-   --install no_install=no \
-   --osinfo linux2020 \
-   --vcpus 1 --ram 2048 --video none --graphics none \
-   --disk none --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
-   --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-36-1-5 rd.live.image systemd.unit=multi-user.target" \
-   "${WRTLAB_TEST_VPN_EXT_NETWORKS[@]}" \
-   --noautoconsole
-
-  virt-install -n "${VM}" \
-   --install no_install=yes \
+  echo "Domain: ${OPENWRT_NAME}"
+  virt-install -n "${OPENWRT_NAME}" \
+   --boot hd \
    --osinfo alpinelinux3.14 \
-   --vcpus 1 --ram 256 --video none --graphics none \
-   --disk device=cdrom,path="${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" \
-   --network "network=${NET},mac=${MAC}" \
-   --noautoconsole
+   --vcpus 1 --ram 128 --video none --graphics none  \
+   --disk path="${OPENWRT_DISK}" \
+   "${OPENWRT_NET[@]}" \
+   --noautoconsole | grep . | tail -1
 }
 
 function run_alpine315_test () {
-  local VM=$1
-  local TEST=$2
-  local NET=$3
-  local MAC=$4
+  local ALPINE_NAME=$1
+  local ALPINE_SETUP=$2
+  local ALPINE_NET=$3
+  local ALPINE_MAC=$4
 
   if [ ! -f "${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" ]; then
     WRTLAB_PATH="$PWD"
@@ -254,11 +256,12 @@ function run_alpine315_test () {
     cd "$WRTLAB_PATH"
   fi
 
-  remove_vm "${VM}"
-  virt-install -n "${VM}" --install no_install=yes \
+  echo "Domain: ${ALPINE_NAME}"
+  virt-install -n "${ALPINE_NAME}" \
+   --osinfo alpinelinux3.14 \
    --vcpus 1 --ram 256 --video none --graphics none \
-   --osinfo alpinelinux3.14 --disk device=cdrom,path="${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" \
-   --network "network=${NET},mac=${MAC}" \
-   --noautoconsole
-  "tmp/${NAME}/tests/router_external_${TEST}.exp" "${VM}"
+   --boot=cdrom --disk device=cdrom,path="${LIBVIRT_DIR_POOL_PATH}/alpine-virt-3.15.0-x86_64.iso" \
+   --network "network=${ALPINE_NET},mac=${ALPINE_MAC}" \
+   --noautoconsole | grep . | tail -1
+  "tmp/${NAME}/tests/${ALPINE_SETUP}" "${ALPINE_NAME}" | grep . | tail -1
 }

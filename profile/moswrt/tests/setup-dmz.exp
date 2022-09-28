@@ -12,7 +12,6 @@ log_user 1
 
 send_user "\nExternal test started ... \n"
 
-spawn virsh reset $name
 spawn virsh console $name
 
 set timeout 10

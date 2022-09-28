@@ -1,4 +1,4 @@
 <network>
-  <name>moswrt-home-test</name>
+  <name>wrtlab-moswrt-test-home</name>
   <bridge name="virbr104" stp="off"/>
 </network>

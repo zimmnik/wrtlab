@@ -1,0 +1,20 @@
+#!/usr/bin/expect -f
+#AUTHOR="Semyon Vasilkov <github@zimmnik.ru>"
+#FYI https://pantz.org/software/expect/expect_examples_and_tips.html
+
+set name [lindex $argv 0]
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname virsh_domain_name\n"
+  exit 1
+}
+
+log_user 1
+
+spawn virsh console $name
+
+send_user "\ndmz testing started\n\n"
+
+send_user "\nMOC\n\n"
+
+send_user "\ndmz testing completed successfully\n\n"
+close

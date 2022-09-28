@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -o xtrace
+#set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
@@ -34,8 +34,8 @@ yum clean all && rm -rf /var/cache/yum
 
 cd /usr/src
 
-curl -LO http://downloads.openwrt.org/releases/__WRTLAB_VERSION__/targets/x86/64/openwrt-imagebuilder-__WRTLAB_VERSION__-x86-64.Linux-x86_64.tar.xz
-curl -LO http://downloads.openwrt.org/releases/__WRTLAB_VERSION__/targets/x86/64/sha256sums
+curl -LO https://downloads.openwrt.org/releases/__WRTLAB_VERSION__/targets/x86/64/openwrt-imagebuilder-__WRTLAB_VERSION__-x86-64.Linux-x86_64.tar.xz
+curl -LO https://downloads.openwrt.org/releases/__WRTLAB_VERSION__/targets/x86/64/sha256sums
 sha256sum --ignore-missing -c sha256sums
 
 tar -vxJf openwrt-imagebuilder-__WRTLAB_VERSION__-x86-64.Linux-x86_64.tar.xz

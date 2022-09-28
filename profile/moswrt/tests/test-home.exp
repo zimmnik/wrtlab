@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+#AUTHOR="Semyon Vasilkov <github@zimmnik.ru>"
+#FYI https://pantz.org/software/expect/expect_examples_and_tips.html
+
+set name [lindex $argv 0]
+if {[llength $argv] == 0} {
+  send_user "Usage: scriptname virsh_domain_name\n"
+  exit 1
+}
+
+log_user 1
+
+send_user "\nhome testing started\n\n"
+
+send_user "\nMOC\n\n"
+
+send_user "\nhome testing completed successfully\n\n"
+close

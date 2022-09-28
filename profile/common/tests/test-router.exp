@@ -1,5 +1,4 @@
 #!/usr/bin/expect -f
-#AUTHOR="Semyon Vasilkov <github@zimmnik.ru>"
 #FYI https://pantz.org/software/expect/expect_examples_and_tips.html
 
 set name [lindex $argv 0]
@@ -16,26 +15,10 @@ proc send {ignore arg} {
         exp_send -s -- $arg
 }
 
-send_user "\nTest started ... \n"
+send_user "\nrouter testing started\n\n"
 
 #spawn virsh reset $name
 spawn virsh console $name
-
-send -- "\r"
-set prompt "(%|#|\\$) $"
-set timeout 30
-expect {
-  "Please press Enter to activate this console" {
-    sleep 3
-    send -- "\r"
-    expect {
-      -re $prompt {}
-      default { send_user "FAIL: console error\n"; exit 1 }
-    }
-  }
-  -re $prompt { send -- "\r" }
-  default { send_user "FAIL: console error\n"; exit 1 }
-}
 
 #flush stdout
 #send -- "time ping -c 1 172.28.1.1\r"
@@ -46,5 +29,5 @@ expect {
   default { send_user "FAIL: ping error\n"; exit 1 }
 }
 
-send_user "\nTest passed successfully\n\n"
+send_user "\nrouter testing completed successfully\n\n"
 close

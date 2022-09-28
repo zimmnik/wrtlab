@@ -1,4 +1,4 @@
 <network>
-  <name>moswrt-dmz-test</name>
+  <name>wrtlab-moswrt-test-dmz</name>
   <bridge name="virbr103" stp="off"/>
 </network>

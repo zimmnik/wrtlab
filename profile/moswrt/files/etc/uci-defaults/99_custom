@@ -15,18 +15,14 @@ uci -q batch << EOI
 
 	#Static Leases
 		add dhcp host
-		set dhcp.@host[-1].name='squid'
-		set dhcp.@host[-1].dns='1'
-		set dhcp.@host[-1].mac='92:D0:C6:0B:29:35'
-		set dhcp.@host[-1].ip='192.168.4.253'
-		
-		add dhcp host
 		set dhcp.@host[-1].name='probook'
 		set dhcp.@host[-1].dns='1'
 		set dhcp.@host[-1].mac='50:81:40:9F:32:7F'
 		set dhcp.@host[-1].ip='192.168.4.252'
-
-
+         #Hostnames
+		add dhcp domain
+		set dhcp.@domain[-1].name='prox'
+		set dhcp.@domain[-1].ip='192.168.1.251'
 #Network - Interfaces - Devices
         #br-lan
         delete network.@device[0]

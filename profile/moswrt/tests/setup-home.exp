@@ -12,7 +12,6 @@ log_user 1
 
 send_user "\nExternal test started ... \n"
 
-spawn virsh reset $name
 spawn virsh console $name
 
 set timeout 10
@@ -29,13 +28,7 @@ expect {
   default { send_user "\nFAIL: prompt error\n"; exit 1 }
 }
 
-send -- "\
-ip a add __WRTLAB_MNGT_IP_HOST__/24 dev eth0 && \
-ip link set dev eth0 up && \
-ip route add default via __WRTLAB_MNGT_IP__ && \
-echo \"nameserver __WRTLAB_MNGT_IP__\" >> /etc/resolv.conf && \
-ip r && \
-ping -c 1 __WRTLAB_MNGT_IP__\r"
+send -- "KEYMAPOPTS=\"us us\" setup-alpine -q && ping -c 1 __WRTLAB_HOME_IP__\r"
 set timeout 10
 expect {
   " 0% packet loss" {}
@@ -48,6 +41,27 @@ expect {
   " 0% packet loss" {}
   default { send_user "FAIL: internet ping error\n"; exit 1 }
 }
+
+send -- "ping -c 1 alpine-dmz.mos.local\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: dmz ping error\n"; exit 1 }
+}
+
+send -- "ping -c 1 __WRTLAB_VPN_IP__\r"
+set timeout 10
+expect {
+  " 0% packet loss" {}
+  default { send_user "FAIL: vpn ping error\n"; exit 1 }
+}
+
+#send -- "ping -c 1 __WRTLAB_TEST_VPN_IP__\r"
+#set timeout 10
+#expect {
+#  " 0% packet loss" {}
+#  default { send_user "FAIL: vpn ping error\n"; exit 1 }
+#}
 
 send_user "\nTest passed successfully\n\n"
 close
