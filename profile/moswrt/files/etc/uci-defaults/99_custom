@@ -23,7 +23,7 @@ uci -q batch << EOI
 		set dhcp.@host[-1].name='minecraft'
 		set dhcp.@host[-1].dns='1'
 		set dhcp.@host[-1].mac='92:D0:C6:1B:29:33'
-		set dhcp.@host[-1].ip='192.168.4.251'
+		set dhcp.@host[-1].ip='192.168.3.251'
          #Hostnames
 		add dhcp domain
 		set dhcp.@domain[-1].name='prox'
@@ -223,11 +223,11 @@ uci -q batch << EOI
 	add_list firewall.@redirect[-1].proto='tcp'
 	set firewall.@redirect[-1].dest='dmz'
 	set firewall.@redirect[-1].target='DNAT'
-	set firewall.@redirect[-1].name='MFT'
+	set firewall.@redirect[-1].name='minecraft'
 	set firewall.@redirect[-1].src='wan'
-	set firewall.@redirect[-1].src_dport='54321'
-	set firewall.@redirect[-1].dest_ip='192.168.3.64'
-	set firewall.@redirect[-1].dest_port='54321'
+	set firewall.@redirect[-1].src_dport='25565'
+	set firewall.@redirect[-1].dest_ip='192.168.3.251'
+	set firewall.@redirect[-1].dest_port='25565'
 #Network - Firewall - Traffic rules
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Wireguard'
