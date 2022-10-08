@@ -5,11 +5,11 @@ set -o pipefail
 set -o nounset
 set -o errexit
 
-NAME="moswrt"
+NAME="ihorwrt"
 WRTLAB_VERSION="22.03.0"
-LIBVIRT_DIR_POOL_PATH="/var/lib/libvirt/images"
+LIBVIRT_DIR_POOL_PATH=~/BOOT
 
-WRTLAB_PROXY_ENABLED="true"
+WRTLAB_PROXY_ENABLED="false"
 
 source profile/common/bash_functions
 
@@ -19,7 +19,7 @@ main () {
   clean
   build
   test
-  deploy
+  #deploy
 }
 
 main "$@"

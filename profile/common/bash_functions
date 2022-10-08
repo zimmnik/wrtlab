@@ -141,10 +141,7 @@ function test () {
   create_profile
   create_venv
   "tmp/${NAME}/tests/test-router.exp" "wrtlab-${NAME}-test-main" | grep . | tail -1
-  "tmp/${NAME}/tests/test-vpn.exp" "wrtlab-${NAME}-test-vpn"     | grep . | tail -1
-  "tmp/${NAME}/tests/test-mngt.exp" "wrtlab-${NAME}-test-mngt"   | grep . | tail -1
-  "tmp/${NAME}/tests/test-dmz.exp" "wrtlab-${NAME}-test-dmz"     | grep . | tail -1
-  "tmp/${NAME}/tests/test-home.exp" "wrtlab-${NAME}-test-home"   | grep . | tail -1
+  test_specific
   clean
 }
 

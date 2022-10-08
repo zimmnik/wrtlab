@@ -104,3 +104,11 @@ function create_venv_specific () {
  run_alpine315_test "wrtlab-${NAME}-test-dmz" setup-dmz.exp "wrtlab-${NAME}-test-dmz" "${WRTLAB_TEST_DMZ_MAC}"
  run_alpine315_test "wrtlab-${NAME}-test-home" setup-home.exp "wrtlab-${NAME}-test-home" "${WRTLAB_TEST_HOME_MAC}"
 }
+
+function test_specific () {
+
+  "tmp/${NAME}/tests/test-vpn.exp" "wrtlab-${NAME}-test-vpn"     | grep . | tail -1
+  "tmp/${NAME}/tests/test-mngt.exp" "wrtlab-${NAME}-test-mngt"   | grep . | tail -1
+  "tmp/${NAME}/tests/test-dmz.exp" "wrtlab-${NAME}-test-dmz"     | grep . | tail -1
+  "tmp/${NAME}/tests/test-home.exp" "wrtlab-${NAME}-test-home"   | grep . | tail -1
+}

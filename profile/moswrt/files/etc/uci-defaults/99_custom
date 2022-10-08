@@ -3,7 +3,6 @@ uci -q batch << EOI
 #System - System - General Settings
 	#Hostname
 	set system.@system[0].hostname='__NAME__'
-
 #Network - DHCP and DNS
 	#General Settings 
 		#Local server
