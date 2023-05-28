@@ -1,3 +1,4 @@
+service odhcpd disable
 while uci -q delete firewall.@rule[0]; do :; done
 uci -q batch << EOI
 #System - System - General Settings
