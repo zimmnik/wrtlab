@@ -18,6 +18,12 @@ uci -q batch << EOI
 		set dhcp.@host[-1].dns='1'
 		set dhcp.@host[-1].mac='50:81:40:9F:32:7F'
 		set dhcp.@host[-1].ip='192.168.4.252'
+
+		add dhcp host
+		set dhcp.@host[-1].name='minecraft'
+		set dhcp.@host[-1].dns='1'
+		set dhcp.@host[-1].mac='92:D0:C6:1B:29:33'
+		set dhcp.@host[-1].ip='192.168.3.251'
          #Hostnames
 		add dhcp domain
 		set dhcp.@domain[-1].name='prox'
@@ -147,7 +153,6 @@ uci -q batch << EOI
 #Network - Firewall - Zones
 	#LAN
 		delete firewall.@zone[0]
-
 	#vpn
 		add firewall zone
 		set firewall.@zone[-1].name='vpn'
@@ -159,6 +164,12 @@ uci -q batch << EOI
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='vpn'
 		set firewall.@forwarding[-1].dest='wan'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='vpn'
+		set firewall.@forwarding[-1].dest='dmz'
+		add firewall forwarding
+		set firewall.@forwarding[-1].src='vpn'
+		set firewall.@forwarding[-1].dest='home'
 	#mngt
 		add firewall zone
 		set firewall.@zone[-1].name='mngt'
@@ -174,7 +185,7 @@ uci -q batch << EOI
 		set firewall.@zone[-1].name='home'
 		set firewall.@zone[-1].input='ACCEPT'
 		set firewall.@zone[-1].output='ACCEPT'
-		set firewall.@zone[-1].forward='ACCEPT'
+		set firewall.@zone[-1].forward='REJECT'
 		add_list firewall.@zone[-1].network='home'
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='home'
@@ -190,7 +201,7 @@ uci -q batch << EOI
 		set firewall.@zone[-1].name='dmz'
 		set firewall.@zone[-1].input='ACCEPT'
 		set firewall.@zone[-1].output='ACCEPT'
-		set firewall.@zone[-1].forward='ACCEPT'
+		set firewall.@zone[-1].forward='REJECT'
 		add_list firewall.@zone[-1].network='dmz'
 		add firewall forwarding
 		set firewall.@forwarding[-1].src='dmz'
@@ -212,11 +223,11 @@ uci -q batch << EOI
 	add_list firewall.@redirect[-1].proto='tcp'
 	set firewall.@redirect[-1].dest='dmz'
 	set firewall.@redirect[-1].target='DNAT'
-	set firewall.@redirect[-1].name='MFT'
+	set firewall.@redirect[-1].name='minecraft'
 	set firewall.@redirect[-1].src='wan'
-	set firewall.@redirect[-1].src_dport='54321'
-	set firewall.@redirect[-1].dest_ip='192.168.3.64'
-	set firewall.@redirect[-1].dest_port='54321'
+	set firewall.@redirect[-1].src_dport='25565'
+	set firewall.@redirect[-1].dest_ip='192.168.3.251'
+	set firewall.@redirect[-1].dest_port='25565'
 #Network - Firewall - Traffic rules
 	add firewall rule
 	set firewall.@rule[-1].name='Allow-Wireguard'
