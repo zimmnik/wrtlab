@@ -6,14 +6,14 @@ set -o nounset
 set -o errexit
 
 WRTLAB_WAN_IF="eth0"
-WRTLAB_WAN_IP="10.64.0.253"
-WRTLAB_WAN_MASK="255.255.255.0"
-WRTLAB_WAN_GW="10.64.0.254"
-WRTLAB_WAN_DNS="10.64.0.254"
+WRTLAB_WAN_IP="185.87.51.170"
+WRTLAB_WAN_MASK="255.255.252.0"
+WRTLAB_WAN_GW="185.87.48.1"
+WRTLAB_WAN_DNS=77.88.8.8
 WRTLAB_WAN_MAC="52:54:00:55:02:00"
 
 WRTLAB_VPN_IP="192.168.6.254"
-WRTLAB_VPN_MASK_SHORT="24"
+WRTLAB_VPN_MASK_SHORT=24
 WRTLAB_VPN_NET="192.168.6.0/24"
 WRTLAB_VPN_PORT="5151"
 WRTLAB_VPN_PORT_HIDDEN="53"
@@ -25,6 +25,8 @@ WRTLAB_TEST_VPN_NET="192.168.6.0/24"
 WRTLAB_TEST_VPN_EXT_MAC="52:54:00:55:02:02"
 
 WRTLAB_TEST_NETWORKS=(--network "network=wrtlab-${NAME}-test-wan,mac=${WRTLAB_WAN_MAC}" --check mac_in_use=off)
+
+WRTLAB_RAW_IMAGE="${LIBVIRT_DIR_POOL_PATH}/wrtlab-${NAME}-prod.img"
 
 function bake_vars_specific () {
   :
@@ -45,14 +47,21 @@ function create_venv_specific () {
  virt-install -n "wrtlab-${NAME}-test-vpn"  \
  --osinfo linux2020 \
  --vcpus 1 --ram 2048 --video none --graphics none  \
- --boot=cdrom --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
+ --disk none --boot=cdrom --location "${LIBVIRT_DIR_POOL_PATH}/Fedora-Workstation-Live-x86_64-36-1.5.iso" \
  --extra-args "console=ttyS0 root=live:CDLABEL=Fedora-WS-Live-36-1-5 rd.live.image systemd.unit=multi-user.target" \
  --network "network=wrtlab-${NAME}-test-wan" \
  --noautoconsole | grep . | tail -1
  "tmp/${NAME}/tests/setup-vpn.exp" "wrtlab-${NAME}-test-vpn" | grep . | tail -1
+# "tmp/${NAME}/tests/setup-vpn.exp" "wrtlab-${NAME}-test-vpn"
 }
 
 function test_specific () {
   #"tmp/${NAME}/tests/test-vpn.exp" "wrtlab-${NAME}-test-vpn"     | grep . | tail -1
   "tmp/${NAME}/tests/test-vpn.exp" "wrtlab-${NAME}-test-vpn"
+}
+
+function deploy_specific () {
+  # shellcheck disable=SC2153
+  qemu-img convert -f qcow2 -O raw "${WRTLAB_REF_IMAGE}" "${WRTLAB_RAW_IMAGE}"
+  ls -alh "${WRTLAB_RAW_IMAGE}"
 }

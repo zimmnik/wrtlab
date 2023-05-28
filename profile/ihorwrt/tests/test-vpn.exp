@@ -12,8 +12,6 @@ log_user 1
 spawn virsh console $name
 
 send_user "\nvpn testing started\n\n"
-
 send_user "\nMOC\n\n"
-
 send_user "\nvpn testing completed successfully\n\n"
 close

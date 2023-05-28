@@ -62,13 +62,13 @@ uci -q batch << EOI
 	set firewall.@rule[-1].dest_port='5201'
 	set firewall.@rule[-1].target='ACCEPT'
         #Rule 'Allow-uhttpd' DEBUG ONLY
-	add firewall rule
-	set firewall.@rule[-1].name='Allow-Uhttpd'
-	set firewall.@rule[-1].family='ipv4'
-	set firewall.@rule[-1].src='*'
-	set firewall.@rule[-1].dest_port='443'
-	set firewall.@rule[-1].target='ACCEPT'
-	add_list firewall.@rule[-1].proto='tcp'
+	#add firewall rule
+	#set firewall.@rule[-1].name='Allow-Uhttpd'
+	#set firewall.@rule[-1].family='ipv4'
+	#set firewall.@rule[-1].src='*'
+	#set firewall.@rule[-1].dest_port='443'
+	#set firewall.@rule[-1].target='ACCEPT'
+	#add_list firewall.@rule[-1].proto='tcp'
 
 #Network - Firewall - Zones - LAN
 	delete firewall.@zone[0]

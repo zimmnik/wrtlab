@@ -17,9 +17,14 @@ main () {
   check_system
   lint
   clean
-  build
-  test
+  create_profile
+  #build
+  #test
   #deploy
 }
 
 main "$@"
+
+#TODO
+# REMOVE USELESS FORWARDING
+

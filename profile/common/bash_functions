@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1004,1090,2034
-set -o xtrace
+#set -o xtrace
 set -o pipefail
 set -o nounset
 set -o errexit
@@ -108,17 +108,17 @@ function build () {
   --env "IMG_PROXY_ENABLED=${WRTLAB_PROXY_ENABLED}" \
   --env "IMG_PROXY_URL=${WRTLAB_PROXY_URL_DOCKER}" \
   "wrtlab:${WRTLAB_VERSION}" > /dev/null
-  ls -alhZ "tmp/${NAME}/img/openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz"
+  #ls -alhZ "tmp/${NAME}/img/openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz"
 
   cd "tmp/${NAME}/img/"
-  gzip -d "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz" || true
+  gzip --quiet --decompress "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img.gz" || true
   qemu-img convert -f raw -O qcow2 "openwrt-${WRTLAB_VERSION}-x86-64-generic-ext4-combined.img" "wrtlab-${NAME}-latest.qcow2"
 
   if [ ! -d "$LIBVIRT_DIR_POOL_PATH" ]; then
     mkdir -p "$LIBVIRT_DIR_POOL_PATH"
   fi
   
-  cp -v "wrtlab-${NAME}-latest.qcow2" "${WRTLAB_REF_IMAGE}"
+  cp "wrtlab-${NAME}-latest.qcow2" "${WRTLAB_REF_IMAGE}"
   #chown "qemu:qemu" "${LATEST_IMAGE}"
   #chmod g+rwx "${LATEST_IMAGE}"
   ls -alhZ "${WRTLAB_REF_IMAGE}"
@@ -142,7 +142,8 @@ function test () {
   create_venv
   "tmp/${NAME}/tests/test-router.exp" "wrtlab-${NAME}-test-main" | grep . | tail -1
   test_specific
-  clean
+  remove_venv
+  remove_profile
 }
 
 function create_virtnets () {
@@ -173,11 +174,7 @@ function remove_virtnets () {
 
 function deploy () {
   echo "Deploy ..."
-  rm "${WRTLAB_PREV_IMAGE}" || true
-  cp "${WRTLAB_PROD_IMAGE}" "${WRTLAB_PREV_IMAGE}"
-  remove_vm "wrtlab-${NAME}-prod-main"
-  cp -v "${WRTLAB_REF_IMAGE}" "${WRTLAB_PROD_IMAGE}"
-  run_openwrt "wrtlab-${NAME}-prod-main" "${WRTLAB_PROD_IMAGE}" "${WRTLAB_PROD_NETWORKS[@]}"
+  deploy_specific
 }
 
 
@@ -204,12 +201,14 @@ function remove_vm () {
   local NAME=$1
   local OPTIONS
 
-  if virsh dominfo "${NAME}" | grep -q "State:          running"; then
+  if virsh dominfo "${NAME}" | grep "State:          running"; then
     virsh destroy "${NAME}" | grep .
+  else
+    echo "Skipping destroy, because ${NAME} isn't running"
   fi
 
   if virsh dominfo "${NAME}" &> /dev/null; then
-    if virsh domblklist --details moswrt | grep disk > /dev/null; then
+    if virsh domblklist --details "${NAME}" | grep disk > /dev/null; then
        local DISKS=""
        while read -r line; do
          DISKS+=",$line"
@@ -229,10 +228,9 @@ function run_openwrt () {
   #osinfo-query os
   echo "Domain: ${OPENWRT_NAME}"
   virt-install -n "${OPENWRT_NAME}" \
-   --boot hd \
    --osinfo alpinelinux3.14 \
    --vcpus 1 --ram 128 --video none --graphics none  \
-   --disk path="${OPENWRT_DISK}" \
+   --boot hd --install no_install=yes --disk path="${OPENWRT_DISK}" \
    "${OPENWRT_NET[@]}" \
    --noautoconsole | grep . | tail -1
 }

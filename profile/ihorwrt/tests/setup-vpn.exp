@@ -42,6 +42,7 @@ echo -e 'deltarpm=false\nzchunk=false\nproxy=$proxy_url' | tee -a /etc/dnf/dnf.c
 \r"
 } 
 
+sleep 5
 send -- "yum -y install xterm-resize wireguard-tools\r"
 set timeout 180
 expect {
@@ -85,7 +86,7 @@ expect {
   default { send_user "FAIL: internet ping error\n"; exit 1 }
 }
 
-send -- "traceroute ya.ru; resolvectl query ya.ru"
+send -- "wg; traceroute ya.ru; resolvectl query ya.ru"
 sleep 10
 
 send_user "\nvpn setup completed successfully\n\n"
